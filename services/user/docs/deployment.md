@@ -2,18 +2,13 @@
 
 1. export AWS_PROFILE=admin
 2. GOARCH=amd64 GOOS=linux go build main.go
-3. zip -r login-registration.zip .
+3. zip -r user.zip .
 
 ## Create
-aws lambda create-function \                                                                    
---function-name login-registration \
---zip-file fileb://login-registration.zip \  
---handler login-registration \
---runtime go1.x \
---role "arn:aws:iam::409186456204:role/lambda-basic-execution"
+aws lambda create-function --function-name user --zip-file fileb://user.zip --handler user --runtime go1.x --role "arn:aws:iam::409186456204:role/lambda-basic-execution"
 
 ## Update
-aws lambda update-function-code --function-name login-registration --zip-file fileb://login-registration.zip
+aws lambda update-function-code --function-name user --zip-file fileb://user.zip
 
 ## Invoke
-aws lambda invoke --function-name login-registration --invocation-type "RequestResponse" response.txt
+aws lambda invoke --function-name user --invocation-type "RequestResponse" response.txt
