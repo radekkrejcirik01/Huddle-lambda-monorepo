@@ -19,3 +19,8 @@ func (User) TableName() string {
 func CreateUser(db *gorm.DB, t *User) error {
 	return db.Create(t).Error
 }
+
+// Get User from DB
+func GetUser(db *gorm.DB, t *User) error {
+	return db.Where("username = ?", t.Username).First(t).Error
+}

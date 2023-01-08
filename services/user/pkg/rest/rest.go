@@ -12,6 +12,7 @@ func Create() *fiber.App {
 	app.Get("/", controller.Index)
 
 	app.Post("/create", controller.CreateUser)
+	app.Post("/get", controller.GetUser)
 
 	return app
 }
