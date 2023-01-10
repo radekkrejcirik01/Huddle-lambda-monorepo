@@ -18,11 +18,6 @@ func (PeopleTable) TableName() string {
 	return "people"
 }
 
-// Create new User in DB
-func CreateUser(db *gorm.DB, t *PeopleTable) error {
-	return db.Create(t).Error
-}
-
 // Get people from DB
 func GetPeople(db *gorm.DB, t *People) ([]People, error) {
 	query := `SELECT * FROM users WHERE username IN (SELECT username FROM people WHERE user = '` + t.Username + `')`
