@@ -5,7 +5,7 @@
 3. zip -r messages.zip .
 
 ## Create
-aws lambda create-function --function-name messages --zip-file fileb://messages.zip --handler messages --runtime go1.x --role "arn:aws:iam::409186456204:role/lambda-basic-execution"
+aws lambda create-function --function-name PingMe-messages --zip-file fileb://messages.zip --handler main --runtime go1.x --role "arn:aws:iam::409186456204:role/lambda-basic-execution"
 
 ## Update
 aws lambda update-function-code --function-name messages --zip-file fileb://messages.zip
