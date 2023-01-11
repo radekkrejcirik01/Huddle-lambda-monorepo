@@ -3,7 +3,7 @@ package messages
 import (
 	"strings"
 
-	"github.com/radekkrejcirik01/Casblanca-backend/services/messages/pkg/model/helpers"
+	"github.com/radekkrejcirik01/PingMe-backend/services/messages/pkg/model/helpers"
 	"gorm.io/gorm"
 )
 
