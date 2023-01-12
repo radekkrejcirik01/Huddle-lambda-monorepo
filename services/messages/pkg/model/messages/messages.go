@@ -10,8 +10,8 @@ import (
 )
 
 type MessagesBody struct {
-	Email string
-	User  string
+	Username string
+	User     string
 }
 
 type Message struct {
@@ -63,10 +63,10 @@ func GetMessages(db *gorm.DB, t *MessagesBody, page string) ([]Messages, error) 
 							time
 						FROM
 							messages
-						WHERE (sender = '` + t.Email + `'
+						WHERE (sender = '` + t.Username + `'
 							AND receiver = '` + t.User + `')
 							OR(sender = '` + t.User + `'
-								AND receiver = '` + t.Email + `')
+								AND receiver = '` + t.Username + `')
 						ORDER BY
 							id DESC
 						LIMIT 10 OFFSET ` + offset
@@ -92,7 +92,7 @@ func SendMessage(db *gorm.DB, t *SentMessage) error {
 	if err == nil {
 		tokens := &[]string{}
 		if err := GetUserTokensByUser(db, tokens, t.Receiver); err != nil {
-			return err
+			return nil
 		}
 		notification := Notification{
 			Sender:  t.Sender,
@@ -125,7 +125,7 @@ func GetMessagesFromQuery(db *gorm.DB, query string) ([]Messages, error) {
 }
 
 func GetUserTokensByUser(db *gorm.DB, t *[]string, user string) error {
-	return db.Table("devices").Select("device_token").Where("email = ?", user).Find(t).Error
+	return db.Table("devices").Select("device_token").Where("username = ?", user).Find(t).Error
 }
 
 func SendNotification(t *Notification) error {
@@ -166,5 +166,5 @@ func SendNotification(t *Notification) error {
 
 // UpdateRead update message as read
 func UpdateRead(db *gorm.DB, t *MessagesBody) error {
-	return db.Table("messages").Where("sender = ? AND receiver = ?", t.User, t.Email).Update("is_read", 1).Error
+	return db.Table("messages").Where("sender = ? AND receiver = ?", t.User, t.Username).Update("is_read", 1).Error
 }

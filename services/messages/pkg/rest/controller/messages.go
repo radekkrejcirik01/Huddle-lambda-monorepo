@@ -10,7 +10,7 @@ import (
 func GetConversations(c *fiber.Ctx) error {
 	page := c.Params("page")
 
-	t := &messages.Email{}
+	t := &messages.Username{}
 
 	if err := c.BodyParser(t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{

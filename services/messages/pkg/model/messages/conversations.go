@@ -7,8 +7,8 @@ import (
 	"gorm.io/gorm"
 )
 
-type Email struct {
-	Email string
+type Username struct {
+	Username string
 }
 
 type MessagedUser struct {
@@ -20,13 +20,13 @@ type MessagedUser struct {
 }
 
 type User struct {
-	Email          string
+	Username       string
 	Firstname      string
 	ProfilePicture string
 }
 
 type ConversationList struct {
-	Email          string `json:"email"`
+	Username       string `json:"username"`
 	Firstname      string `json:"firstname"`
 	ProfilePicture string `json:"profilePicture"`
 	Message        string `json:"message"`
@@ -35,7 +35,7 @@ type ConversationList struct {
 }
 
 // GetConversationsList get conversations
-func GetConversationsList(db *gorm.DB, t *Email, page string) ([]ConversationList, error) {
+func GetConversationsList(db *gorm.DB, t *Username, page string) ([]ConversationList, error) {
 	offset := helpers.GetOffset(page)
 
 	messagedUsersQuery := `SELECT
@@ -52,10 +52,10 @@ func GetConversationsList(db *gorm.DB, t *Email, page string) ([]ConversationLis
 										MAX(id)
 										FROM messages
 									WHERE
-										sender = '` + t.Email + `'
-										OR receiver = '` + t.Email + `'
+										sender = '` + t.Username + `'
+										OR receiver = '` + t.Username + `'
 									GROUP BY
-										( IF(sender = '` + t.Email + `', receiver, sender)))
+										( IF(sender = '` + t.Username + `', receiver, sender)))
 							ORDER BY
 								id DESC
 							LIMIT 10 OFFSET ` + offset
@@ -65,11 +65,11 @@ func GetConversationsList(db *gorm.DB, t *Email, page string) ([]ConversationLis
 		return nil, err
 	}
 
-	formattedMessagedUsers := getFormattedMessagedUsers(messagedUsers, t.Email)
+	formattedMessagedUsers := getFormattedMessagedUsers(messagedUsers, t.Username)
 
-	userEmails := getUserEmailsString(formattedMessagedUsers)
+	usernamesString := getUsernamesString(formattedMessagedUsers)
 
-	usersQuery := `SELECT email, firstname, profile_picture FROM users WHERE email IN (` + userEmails + `)`
+	usersQuery := `SELECT username, firstname, profile_picture FROM users WHERE username IN (` + usernamesString + `)`
 
 	users, err := GetUsersFromQuery(db, usersQuery)
 	if err != nil {
@@ -79,9 +79,9 @@ func GetConversationsList(db *gorm.DB, t *Email, page string) ([]ConversationLis
 	var result []ConversationList
 	for _, messagedUser := range formattedMessagedUsers {
 		for _, user := range users {
-			if messagedUser.Sender == user.Email {
+			if messagedUser.Sender == user.Username {
 				result = append(result, ConversationList{
-					Email:          messagedUser.Sender,
+					Username:       messagedUser.Sender,
 					Firstname:      user.Firstname,
 					ProfilePicture: user.ProfilePicture,
 					Message:        messagedUser.Message,
@@ -111,10 +111,10 @@ func GetConversationListFromQuery(db *gorm.DB, query string) ([]MessagedUser, er
 	return array, nil
 }
 
-func getFormattedMessagedUsers(messagedUsers []MessagedUser, email string) []MessagedUser {
+func getFormattedMessagedUsers(messagedUsers []MessagedUser, username string) []MessagedUser {
 	var result []MessagedUser
 	for _, value := range messagedUsers {
-		if value.Sender == email {
+		if value.Sender == username {
 			result = append(result, MessagedUser{
 				Sender:   value.Receiver,
 				Receiver: value.Sender,
@@ -129,14 +129,14 @@ func getFormattedMessagedUsers(messagedUsers []MessagedUser, email string) []Mes
 	return result
 }
 
-func getUserEmailsString(formattedMessagedUsers []MessagedUser) string {
-	var emails []string
+func getUsernamesString(formattedMessagedUsers []MessagedUser) string {
+	var usernames []string
 	for _, user := range formattedMessagedUsers {
-		emails = append(emails, "'"+user.Sender+"'")
+		usernames = append(usernames, "'"+user.Sender+"'")
 	}
-	userEmails := strings.Join(emails, ", ")
+	usernamesString := strings.Join(usernames, ", ")
 
-	return userEmails
+	return usernamesString
 }
 
 func GetUsersFromQuery(db *gorm.DB, query string) ([]User, error) {
