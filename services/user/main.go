@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	fiberadapter "github.com/awslabs/aws-lambda-go-api-proxy/fiber"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/database"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/hangouts"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/users"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/rest"
@@ -17,7 +18,13 @@ var fiberLambda *fiberadapter.FiberLambda
 
 func init() {
 	database.Connect()
-	if err := database.DB.AutoMigrate(&users.User{}, &people.PeopleTable{}, &people.PeopleInvitationTable{}); err != nil {
+	if err := database.DB.AutoMigrate(
+		&users.User{},
+		&people.PeopleTable{},
+		&people.PeopleInvitationTable{},
+		&hangouts.HangoutsTable{},
+		&hangouts.HangoutsInvitationTable{},
+	); err != nil {
 		log.Fatal(err)
 	}
 

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/hangouts"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/users"
 )
@@ -20,4 +21,10 @@ type PeopleResponse struct {
 	Status  string          `json:"status"`
 	Message string          `json:"message,omitempty"`
 	Data    []people.People `json:"data,omitempty"`
+}
+
+type HangoutsResponse struct {
+	Status  string              `json:"status"`
+	Message string              `json:"message,omitempty"`
+	Data    []hangouts.Hangouts `json:"data,omitempty"`
 }
