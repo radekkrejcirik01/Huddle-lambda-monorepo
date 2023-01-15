@@ -38,7 +38,7 @@ type List struct {
 
 type Hangout struct {
 	Id        uint   `json:"id"`
-	CreatedBy string `json:"createdBy"`
+	CreatedBy User   `json:"createdBy"`
 	Users     []User `json:"users"`
 	Time      string `json:"time"`
 	Place     string `json:"place"`
@@ -75,7 +75,7 @@ func GetHangouts(db *gorm.DB, t *GetHangout) ([]Hangouts, error) {
 	order := ` DESC`
 	if !t.ShowAll {
 		today := time.Now()
-		condition = ` AND time > '` + today.Format("2006-01-02") + `'`
+		condition = ` AND time > '` + today.Format("2006-01-02") + `' `
 
 		order = ``
 	}
@@ -86,19 +86,13 @@ func GetHangouts(db *gorm.DB, t *GetHangout) ([]Hangouts, error) {
 						FROM
 							hangouts
 						WHERE
-							username = '` + t.Username + `'` + condition + `
-						UNION
-						SELECT
-							*
-						FROM
-							hangouts
-						WHERE
-							id IN(
+							(username = '` + t.Username + `'
+							OR id IN(
 								SELECT
 									hangout_id FROM hangouts_invitations
 								WHERE
 									username = '` + t.Username + `'
-									AND confirmed = 1` + condition + `)
+									AND confirmed = 1)) ` + condition + `
 						ORDER BY
 							time` + order + `
 		`
@@ -122,10 +116,25 @@ func GetHangouts(db *gorm.DB, t *GetHangout) ([]Hangouts, error) {
 		var hangouts []Hangout
 		for _, hangout := range allHangouts {
 			if strings.Contains(hangout.Time, title) {
+				if !hasConfirmed(hangout, usersAndConfirms) && hangout.Username == t.Username {
+					continue
+				}
+
+				usersByHangout := GetUsersByHangout(db, hangout, usersAndConfirms)
+				createdBy := User{}
+				var users []User
+				for _, user := range usersByHangout {
+					if user.Username != hangout.Username {
+						users = append(users, user)
+					} else {
+						createdBy = user
+					}
+				}
+
 				hangouts = append(hangouts, Hangout{
 					Id:        hangout.Id,
-					CreatedBy: hangout.Username,
-					Users:     GetUsersByHangout(db, hangout, usersAndConfirms),
+					CreatedBy: createdBy,
+					Users:     users,
 					Time:      GetTime(hangout.Time),
 					Place:     hangout.Place,
 				})
@@ -133,14 +142,16 @@ func GetHangouts(db *gorm.DB, t *GetHangout) ([]Hangouts, error) {
 		}
 
 		var hangoutsData []List
-		hangoutsData = append(hangoutsData, List{hangouts})
+		if len(hangouts) > 0 {
+			hangoutsData = append(hangoutsData, List{hangouts})
 
-		data = append(data,
-			Hangouts{
-				Title: title,
-				Data:  hangoutsData,
-			},
-		)
+			data = append(data,
+				Hangouts{
+					Title: title,
+					Data:  hangoutsData,
+				},
+			)
+		}
 	}
 
 	return data, nil
@@ -152,9 +163,22 @@ func GetTime(datetime string) string {
 	return time[0:5]
 }
 
+func hasConfirmed(hangout HangoutsTable, usersAndConfirms []HangoutsInvitationTable) bool {
+	confirmed := false
+	for _, user := range usersAndConfirms {
+		if user.HangoutId == hangout.Id {
+			if user.Confirmed == 1 {
+				confirmed = true
+			}
+		}
+	}
+
+	return confirmed
+}
+
 func GetUsersByHangout(db *gorm.DB, hangout HangoutsTable, usersAndConfirms []HangoutsInvitationTable) []User {
 	var usernames []string
-
+	usernames = append(usernames, "'"+hangout.Username+"'")
 	for _, user := range usersAndConfirms {
 		if user.HangoutId == hangout.Id {
 			usernames = append(usernames, "'"+user.Username+"'")
