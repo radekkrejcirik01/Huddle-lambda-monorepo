@@ -38,7 +38,16 @@ func GetUser(db *gorm.DB, t *User) (UserGet, error) {
 		return UserGet{}, err
 	}
 
-	result := UserGet{User: *t, People: peopleCount, Hangouts: 1}
+	var hangoutsCount int64
+	if err := db.Table("hangouts T1").
+		Joins("JOIN hangouts_invitations T2 ON T1.id = T2.hangout_id").
+		Where("(T1.created_by = ? OR T2.username = ?) AND T2.confirmed = 1", t.Username, t.Username).
+		Distinct("T1.id").
+		Count(&hangoutsCount).Error; err != nil {
+		return UserGet{}, err
+	}
+
+	result := UserGet{User: *t, People: peopleCount, Hangouts: hangoutsCount}
 
 	return result, nil
 }
