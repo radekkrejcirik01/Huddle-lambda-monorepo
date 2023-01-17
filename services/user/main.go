@@ -20,7 +20,6 @@ func init() {
 	database.Connect()
 	if err := database.DB.AutoMigrate(
 		&users.User{},
-		&people.PeopleTable{},
 		&people.PeopleInvitationTable{},
 		&hangouts.HangoutsTable{},
 		&hangouts.HangoutsInvitationTable{},

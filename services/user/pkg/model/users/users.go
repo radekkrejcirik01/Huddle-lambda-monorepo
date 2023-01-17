@@ -34,7 +34,9 @@ func GetUser(db *gorm.DB, t *User) (UserGet, error) {
 	}
 
 	var peopleCount int64
-	if err := db.Table("people").Where("user = ?", t.Username).Count(&peopleCount).Error; err != nil {
+	if err := db.Table("people_invitations").
+		Where("(username = ? AND confirmed = 1) OR (user = ? AND confirmed = 1)", t.Username, t.Username).
+		Count(&peopleCount).Error; err != nil {
 		return UserGet{}, err
 	}
 
