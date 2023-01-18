@@ -25,6 +25,7 @@ type HangoutInvite struct {
 	Username string
 	Time     string
 	Place    string
+	Type     string
 }
 
 type GetHangout struct {
@@ -47,7 +48,12 @@ func (HangoutsTable) TableName() string {
 
 // Create new hangout in DB
 func CreateHangout(db *gorm.DB, t *HangoutInvite) error {
-	hangout := HangoutsTable{CreatedBy: t.User, Time: t.Time, Place: t.Place, Type: "hangout"}
+	hangout := HangoutsTable{
+		CreatedBy: t.User,
+		Time:      t.Time,
+		Place:     t.Place,
+		Type:      t.Type,
+	}
 	if err := db.Create(&hangout).Error; err != nil {
 		return err
 	}

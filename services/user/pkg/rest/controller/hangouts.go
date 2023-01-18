@@ -6,9 +6,13 @@ import (
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/hangouts"
 )
 
+const hangoutType = "hangout"
+const groupHangoutType = "groupHangout"
+
 // CreateHangout POST /create/hangout
 func CreateHangout(c *fiber.Ctx) error {
 	t := &hangouts.HangoutInvite{}
+	t.Type = hangoutType
 
 	if err := c.BodyParser(t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -27,6 +31,31 @@ func CreateHangout(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(Response{
 		Status:  "succes",
 		Message: "Hangout succesfully created!",
+	})
+}
+
+// CreateGroupHangout POST /create/hangout/group
+func CreateGroupHangout(c *fiber.Ctx) error {
+	t := &hangouts.HangoutInvite{}
+	t.Type = groupHangoutType
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := hangouts.CreateHangout(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "succes",
+		Message: "Group hangout succesfully created!",
 	})
 }
 

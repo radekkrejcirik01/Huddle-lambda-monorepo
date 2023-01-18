@@ -8,13 +8,14 @@ type User struct {
 	Id             uint   `gorm:"primary_key;auto_increment;not_null" json:"id"`
 	Username       string `json:"username"`
 	Firstname      string `json:"firstname"`
-	ProfilePicture string `json:"profileName"`
+	ProfilePicture string `json:"profilePicture"`
 }
 
 type UserGet struct {
-	User     User  `json:"user"`
-	People   int64 `json:"people"`
-	Hangouts int64 `json:"hangouts"`
+	User          User  `json:"user"`
+	People        int64 `json:"people"`
+	Hangouts      int64 `json:"hangouts"`
+	Notifications int64 `json:"notifications"`
 }
 
 func (User) TableName() string {
@@ -49,7 +50,30 @@ func GetUser(db *gorm.DB, t *User) (UserGet, error) {
 		return UserGet{}, err
 	}
 
-	result := UserGet{User: *t, People: peopleCount, Hangouts: hangoutsCount}
+	var notificationsCount int64
+	query := `SELECT
+					id
+					FROM
+						people_invitations 
+					WHERE
+						username = '` + t.Username + `'
+					UNION ALL
+					SELECT
+						id
+					FROM
+						hangouts_invitations
+					WHERE
+						username = '` + t.Username + `'`
+	if err := db.Raw(query).Count(&notificationsCount).Error; err != nil {
+		return UserGet{}, err
+	}
+
+	result := UserGet{
+		User:          *t,
+		People:        peopleCount,
+		Hangouts:      hangoutsCount,
+		Notifications: notificationsCount,
+	}
 
 	return result, nil
 }
