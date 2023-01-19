@@ -8,6 +8,9 @@ import (
 	"gorm.io/gorm"
 )
 
+const hangoutType = "hangout"
+const groupHangoutType = "group"
+
 const timeFormat = "2006-01-02 15:04:05"
 
 type HangoutsTable struct {
@@ -25,7 +28,15 @@ type HangoutInvite struct {
 	Username string
 	Time     string
 	Place    string
-	Type     string
+}
+
+type GroupHangoutInvite struct {
+	User      string
+	Title     string
+	Usernames []string
+	Time      string
+	Place     string
+	Picture   string
 }
 
 type GetHangout struct {
@@ -52,7 +63,7 @@ func CreateHangout(db *gorm.DB, t *HangoutInvite) error {
 		CreatedBy: t.User,
 		Time:      t.Time,
 		Place:     t.Place,
-		Type:      t.Type,
+		Type:      hangoutType,
 	}
 	if err := db.Create(&hangout).Error; err != nil {
 		return err
@@ -67,6 +78,35 @@ func CreateHangout(db *gorm.DB, t *HangoutInvite) error {
 		Confirmed: 0,
 	}
 	return db.Table("hangouts_invitations").Create(&hangoutInvitation).Error
+}
+
+// Create new group hangout in DB
+func CreateGroupHangout(db *gorm.DB, t *GroupHangoutInvite) error {
+	hangout := HangoutsTable{
+		CreatedBy: t.User,
+		Title:     t.Title,
+		Time:      t.Time,
+		Place:     t.Place,
+		Picture:   t.Picture,
+		Type:      groupHangoutType,
+	}
+	if err := db.Create(&hangout).Error; err != nil {
+		return err
+	}
+
+	now := time.Now().Format(timeFormat)
+
+	var hangoutInvitations []HangoutsInvitationTable
+	for _, username := range t.Usernames {
+		hangoutInvitations = append(hangoutInvitations, HangoutsInvitationTable{
+			HangoutId: hangout.Id,
+			User:      t.User,
+			Username:  username,
+			Time:      now,
+			Confirmed: 0,
+		})
+	}
+	return db.Table("hangouts_invitations").Create(&hangoutInvitations).Error
 }
 
 // Get all hangouts from DB
