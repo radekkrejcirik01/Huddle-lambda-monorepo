@@ -12,10 +12,11 @@ type User struct {
 }
 
 type UserGet struct {
-	User          User  `json:"user"`
-	People        int64 `json:"people"`
-	Hangouts      int64 `json:"hangouts"`
-	Notifications int64 `json:"notifications"`
+	User           User  `json:"user"`
+	People         int64 `json:"people"`
+	Hangouts       int64 `json:"hangouts"`
+	Notifications  int64 `json:"notifications"`
+	UnreadMessages int64 `json:"unreadMessages"`
 }
 
 func (User) TableName() string {
@@ -68,11 +69,17 @@ func GetUser(db *gorm.DB, t *User) (UserGet, error) {
 		return UserGet{}, err
 	}
 
+	var unreadMessagesCount int64
+	if err := db.Table("messages").Where("id IN(SELECT MAX(id) FROM messages WHERE conversation_id IN( SELECT conversation_id FROM people_in_conversations WHERE username = ?) GROUP BY conversation_id) AND is_read = 0", t.Username).Count(&unreadMessagesCount).Error; err != nil {
+		return UserGet{}, err
+	}
+
 	result := UserGet{
-		User:          *t,
-		People:        peopleCount,
-		Hangouts:      hangoutsCount,
-		Notifications: notificationsCount,
+		User:           *t,
+		People:         peopleCount,
+		Hangouts:       hangoutsCount,
+		Notifications:  notificationsCount,
+		UnreadMessages: unreadMessagesCount,
 	}
 
 	return result, nil

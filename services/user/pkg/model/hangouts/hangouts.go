@@ -151,10 +151,14 @@ func GetHangouts(db *gorm.DB, t *GetHangout) ([]Hangouts, error) {
 
 	hangoutsUsers := getHangoutUsers(hangouts)
 
-	query := `SELECT username, firstname, profile_picture FROM users WHERE username IN (` + hangoutsUsers + `)`
-	users, err := GetUsersFromQuery(db, query)
-	if err != nil {
-		return nil, err
+	var users []people.People
+	if len(hangoutsUsers) > 1 {
+		query := `SELECT username, firstname, profile_picture FROM users WHERE username IN (` + hangoutsUsers + `)`
+		usersFromQuery, err := GetUsersFromQuery(db, query)
+		if err != nil {
+			return nil, err
+		}
+		users = usersFromQuery
 	}
 
 	titles := GetTitles(hangouts)
