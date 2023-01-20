@@ -33,19 +33,21 @@ func GetHangoutById(db *gorm.DB, t *HangoutId) (HangoutById, error) {
 	}
 
 	var usernames []string
-	if hangout.Type == hangoutType && hangout.CreatedBy != t.Username {
-		usernames = append(usernames, hangout.CreatedBy)
-	} else {
-		if err := db.Table("hangouts_invitations").Select("username").Where("hangout_id = ? AND username != ?", t.Id, t.Username).Find(&usernames).Error; err != nil {
-			return HangoutById{}, err
-		}
+	if err := db.Table("hangouts_invitations").Select("username").Where("hangout_id = ?", t.Id).Find(&usernames).Error; err != nil {
+		return HangoutById{}, err
 	}
+	usernames = append(usernames, hangout.CreatedBy)
 
 	title := hangout.Title
 	picture := hangout.Picture
 	if hangout.Type == hangoutType {
+		username := usernames[0]
+		if username == t.Username {
+			username = usernames[1]
+		}
+
 		var user User
-		if err := db.Table("users").Select("firstname, profile_picture").Where("username = ?", usernames[0]).First(&user).Error; err != nil {
+		if err := db.Table("users").Select("firstname, profile_picture").Where("username = ?", username).First(&user).Error; err != nil {
 			return HangoutById{}, err
 		}
 
