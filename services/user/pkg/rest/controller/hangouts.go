@@ -76,7 +76,34 @@ func GetHangouts(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(HangoutsResponse{
 		Status:  "succes",
-		Message: "Hangout succesfully got!",
+		Message: "Hangouts succesfully got!",
 		Data:    hangouts,
+	})
+}
+
+// GetHangout POST /get/hangout
+func GetHangout(c *fiber.Ctx) error {
+	t := &hangouts.HangoutId{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	hangout, err := hangouts.GetHangoutById(database.DB, t)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(HangoutResponse{
+		Status:  "succes",
+		Message: "Hangout succesfully got!",
+		Data:    hangout,
 	})
 }

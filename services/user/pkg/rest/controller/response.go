@@ -30,6 +30,12 @@ type HangoutsResponse struct {
 	Data    []hangouts.Hangouts `json:"data,omitempty"`
 }
 
+type HangoutResponse struct {
+	Status  string               `json:"status"`
+	Message string               `json:"message,omitempty"`
+	Data    hangouts.HangoutById `json:"data,omitempty"`
+}
+
 type NotificationsResponse struct {
 	Status  string                            `json:"status"`
 	Message string                            `json:"message,omitempty"`
