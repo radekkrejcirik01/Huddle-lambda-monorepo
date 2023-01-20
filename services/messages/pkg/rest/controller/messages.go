@@ -60,6 +60,32 @@ func GetConversations(c *fiber.Ctx) error {
 	})
 }
 
+// GetMessages POST /get/messages
+func GetMessages(c *fiber.Ctx) error {
+	t := &messages.ConversationId{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	messages, err := messages.GetMessages(database.DB, t)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(ResponseMessages{
+		Status:  "succes",
+		Message: "Messages succesfully got!",
+		Data:    messages,
+	})
+}
+
 // UpdateRead POST /update/read
 func UpdateRead(c *fiber.Ctx) error {
 	t := &messages.MessagesBody{}

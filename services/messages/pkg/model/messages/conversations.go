@@ -1,6 +1,7 @@
 package messages
 
 import (
+	"strconv"
 	"strings"
 
 	"gorm.io/gorm"
@@ -56,6 +57,42 @@ type User struct {
 
 // CreateConversation create conversation
 func CreateConversation(db *gorm.DB, t *ConversationCreate) (uint, error) {
+	var usernames []string
+	for _, user := range t.Usernames {
+		usernames = append(usernames, `'`+user+`'`)
+	}
+
+	usernamesString := strings.Join(usernames, ", ")
+	usernamesCount := len(t.Usernames)
+
+	query := `SELECT
+					conversation_id
+				FROM
+					people_in_conversations
+				WHERE
+					conversation_id IN(
+						SELECT
+							conversation_id FROM people_in_conversations
+						WHERE
+							username IN(` + usernamesString + `)
+						GROUP BY
+							conversation_id
+						HAVING
+							COUNT(conversation_id) = ` + strconv.Itoa(usernamesCount) + `)
+				GROUP BY
+					conversation_id
+				HAVING
+					COUNT(conversation_id) = ` + strconv.Itoa(usernamesCount)
+
+	var conversationIds []uint
+	if err := db.Raw(query).Scan(&conversationIds).Error; err != nil {
+		return 0, err
+	}
+
+	if len(conversationIds) > 0 {
+		return conversationIds[0], nil
+	}
+
 	if err := db.Table("conversations").Create(&t).Error; err != nil {
 		return 0, err
 	}

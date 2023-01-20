@@ -22,7 +22,7 @@ type ResponseConversationList struct {
 }
 
 type ResponseMessages struct {
-	Status  string              `json:"status"`
-	Message string              `json:"message"`
-	Data    []messages.Messages `json:"data"`
+	Status  string             `json:"status"`
+	Message string             `json:"message"`
+	Data    []messages.Message `json:"data"`
 }
