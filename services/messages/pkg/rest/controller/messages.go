@@ -6,6 +6,32 @@ import (
 	messages "github.com/radekkrejcirik01/PingMe-backend/services/messages/pkg/model/messages"
 )
 
+// CreateConversation POST /get/conversations/:page
+func CreateConversation(c *fiber.Ctx) error {
+	t := &messages.ConversationCreate{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	conversationId, err := messages.CreateConversation(database.DB, t)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(ResponseCreateConversation{
+		Status:         "succes",
+		Message:        "Conversation succesfully created",
+		ConversationId: conversationId,
+	})
+}
+
 // GetConversations POST /get/conversations/:page
 func GetConversations(c *fiber.Ctx) error {
 	page := c.Params("page")
@@ -31,34 +57,6 @@ func GetConversations(c *fiber.Ctx) error {
 		Status:  "succes",
 		Message: "Conversation list succesfully get",
 		Data:    conversationList,
-	})
-}
-
-// GetMessages POST /get/messages/:page
-func GetMessages(c *fiber.Ctx) error {
-	page := c.Params("page")
-
-	t := &messages.MessagesBody{}
-
-	if err := c.BodyParser(t); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	messages, err := messages.GetMessages(database.DB, t, page)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(ResponseMessages{
-		Status:  "succes",
-		Message: "Messages succesfully get",
-		Data:    messages,
 	})
 }
 

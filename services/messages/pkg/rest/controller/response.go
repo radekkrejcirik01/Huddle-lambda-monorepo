@@ -9,6 +9,12 @@ type Response struct {
 	Message string `json:"message"`
 }
 
+type ResponseCreateConversation struct {
+	Status         string `json:"status"`
+	Message        string `json:"message"`
+	ConversationId uint   `json:"conversationId"`
+}
+
 type ResponseConversationList struct {
 	Status  string                      `json:"status"`
 	Message string                      `json:"message"`

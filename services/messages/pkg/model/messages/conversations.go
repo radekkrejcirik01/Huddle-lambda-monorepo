@@ -3,20 +3,49 @@ package messages
 import (
 	"strings"
 
-	"github.com/radekkrejcirik01/PingMe-backend/services/messages/pkg/model/helpers"
 	"gorm.io/gorm"
 )
+
+type ConversationsTable struct {
+	Id      uint `gorm:"primary_key;auto_increment;not_null"`
+	Name    string
+	Picture string
+}
+
+type ConversationCreate struct {
+	Id        uint
+	Usernames []string
+}
+
+func (ConversationsTable) TableName() string {
+	return "conversations"
+}
 
 type Username struct {
 	Username string
 }
 
-type MessagedUser struct {
-	Sender   string
-	Receiver string
-	Message  string
-	Time     string
-	IsRead   uint
+type ConversationList struct {
+	Id      uint   `json:"id"`
+	Name    string `json:"name"`
+	Picture string `json:"picture"`
+	Message string `json:"message"`
+	Time    string `json:"time"`
+	IsRead  uint   `json:"isRead"`
+}
+
+type Messages struct {
+	Sender         string
+	ConversationId uint
+	Message        string
+	time           string
+	IsRead         uint
+}
+
+type Conversation struct {
+	Id      uint
+	Name    string
+	Picture string
 }
 
 type User struct {
@@ -25,77 +54,119 @@ type User struct {
 	ProfilePicture string
 }
 
-type ConversationList struct {
-	Username       string `json:"username"`
-	Firstname      string `json:"firstname"`
-	ProfilePicture string `json:"profilePicture"`
-	Message        string `json:"message"`
-	Time           string `json:"time"`
-	IsRead         uint   `json:"isRead"`
+// CreateConversation create conversation
+func CreateConversation(db *gorm.DB, t *ConversationCreate) (uint, error) {
+	if err := db.Table("conversations").Create(&t).Error; err != nil {
+		return 0, err
+	}
+
+	var peopleInConversations []PeopleInConversations
+	for _, username := range t.Usernames {
+		peopleInConversations = append(peopleInConversations, PeopleInConversations{
+			ConversationId: t.Id,
+			Username:       username,
+		})
+	}
+
+	if err := db.Table("people_in_conversations").Create(&peopleInConversations).Error; err != nil {
+		return 0, err
+	}
+
+	return t.Id, nil
 }
 
 // GetConversationsList get conversations
 func GetConversationsList(db *gorm.DB, t *Username, page string) ([]ConversationList, error) {
-	offset := helpers.GetOffset(page)
-
-	messagedUsersQuery := `SELECT
-								sender,
-								receiver,
-								message,
-								time,
-								is_read
-							FROM
-								messages
+	queryGetMessages := `
+			SELECT
+				sender,
+				conversation_id,
+				message,
+				time,
+				is_read
+			FROM
+				messages
+			WHERE
+				id IN(
+					SELECT
+						MAX(id)
+						FROM messages
+					WHERE
+						conversation_id IN(
+							SELECT
+								conversation_id FROM people_in_conversations
 							WHERE
-								id IN(
-									SELECT
-										MAX(id)
-										FROM messages
-									WHERE
-										sender = '` + t.Username + `'
-										OR receiver = '` + t.Username + `'
-									GROUP BY
-										( IF(sender = '` + t.Username + `', receiver, sender)))
-							ORDER BY
-								id DESC
-							LIMIT 10 OFFSET ` + offset
-
-	messagedUsers, err := GetConversationListFromQuery(db, messagedUsersQuery)
+								username = '` + t.Username + `')
+						GROUP BY
+							conversation_id)
+			ORDER BY
+				id DESC`
+	messages, err := GetMessagesFromQuery(db, queryGetMessages)
 	if err != nil {
-		return nil, err
+		return []ConversationList{}, err
 	}
 
-	formattedMessagedUsers := getFormattedMessagedUsers(messagedUsers, t.Username)
-
-	usernamesString := getUsernamesString(formattedMessagedUsers)
-
-	usersQuery := `SELECT username, firstname, profile_picture FROM users WHERE username IN (` + usernamesString + `)`
-
-	users, err := GetUsersFromQuery(db, usersQuery)
+	// Get non group chat users
+	queryGetPeopleInConversations := `
+						SELECT
+							*
+						FROM
+							people_in_conversations
+						WHERE
+							conversation_id IN(
+								SELECT
+									conversation_id FROM people_in_conversations
+								WHERE
+									username = '` + t.Username + `')
+							AND username != '` + t.Username + `'
+						GROUP BY
+							conversation_id
+						HAVING
+							COUNT(conversation_id) = 1`
+	peopleInConversations, err := GetPeopleInConversationsFromQuery(db, queryGetPeopleInConversations)
 	if err != nil {
-		return nil, err
+		return []ConversationList{}, err
+	}
+
+	queryGetConversations := `SELECT * FROM conversations WHERE id IN (SELECT conversation_id FROM people_in_conversations WHERE username = '` + t.Username + `')`
+	conversations, err := GetConversationsFromQuery(db, queryGetConversations)
+	if err != nil {
+		return []ConversationList{}, err
+	}
+
+	usernamesString := getUsernamesString(peopleInConversations)
+
+	var users []User
+	if len(usernamesString) > 0 {
+		queryGetUsers := `SELECT username, firstname, profile_picture FROM users WHERE username IN (` + usernamesString + `)`
+		usersFromQuery, err := GetUsersFromQuery(db, queryGetUsers)
+		if err != nil {
+			return []ConversationList{}, err
+		}
+		users = usersFromQuery
 	}
 
 	var result []ConversationList
-	for _, messagedUser := range formattedMessagedUsers {
-		for _, user := range users {
-			if messagedUser.Sender == user.Username {
-				result = append(result, ConversationList{
-					Username:       messagedUser.Sender,
-					Firstname:      user.Firstname,
-					ProfilePicture: user.ProfilePicture,
-					Message:        messagedUser.Message,
-					Time:           messagedUser.Time,
-					IsRead:         messagedUser.IsRead,
-				})
-			}
-		}
+	for _, message := range messages {
+		name, picture := getNameByConversationId(
+			message.ConversationId,
+			peopleInConversations,
+			users,
+			conversations)
+		result = append(result, ConversationList{
+			Id:      message.ConversationId,
+			Name:    name,
+			Picture: picture,
+			Message: message.Message,
+			Time:    message.time,
+			IsRead:  message.IsRead,
+		})
 	}
 
 	return result, nil
 }
 
-func GetConversationListFromQuery(db *gorm.DB, query string) ([]MessagedUser, error) {
+func GetMessagesFromQuery(db *gorm.DB, query string) ([]Messages, error) {
 	rows, err := db.Raw(query).Rows()
 	if err != nil {
 		return nil, err
@@ -103,40 +174,44 @@ func GetConversationListFromQuery(db *gorm.DB, query string) ([]MessagedUser, er
 
 	defer rows.Close()
 
-	var array []MessagedUser
+	var messages []Messages
 	for rows.Next() {
-		db.ScanRows(rows, &array)
+		db.ScanRows(rows, &messages)
 	}
 
-	return array, nil
+	return messages, nil
 }
 
-func getFormattedMessagedUsers(messagedUsers []MessagedUser, username string) []MessagedUser {
-	var result []MessagedUser
-	for _, value := range messagedUsers {
-		if value.Sender == username {
-			result = append(result, MessagedUser{
-				Sender:   value.Receiver,
-				Receiver: value.Sender,
-				Message:  value.Message,
-				Time:     value.Time,
-				IsRead:   1,
-			})
-		} else {
-			result = append(result, value)
-		}
+func GetPeopleInConversationsFromQuery(db *gorm.DB, query string) ([]PeopleInConversations, error) {
+	rows, err := db.Raw(query).Rows()
+	if err != nil {
+		return nil, err
 	}
-	return result
+
+	defer rows.Close()
+
+	var peopleInConversations []PeopleInConversations
+	for rows.Next() {
+		db.ScanRows(rows, &peopleInConversations)
+	}
+
+	return peopleInConversations, nil
 }
 
-func getUsernamesString(formattedMessagedUsers []MessagedUser) string {
-	var usernames []string
-	for _, user := range formattedMessagedUsers {
-		usernames = append(usernames, "'"+user.Sender+"'")
+func GetConversationsFromQuery(db *gorm.DB, query string) ([]Conversation, error) {
+	rows, err := db.Raw(query).Rows()
+	if err != nil {
+		return nil, err
 	}
-	usernamesString := strings.Join(usernames, ", ")
 
-	return usernamesString
+	defer rows.Close()
+
+	var conversations []Conversation
+	for rows.Next() {
+		db.ScanRows(rows, &conversations)
+	}
+
+	return conversations, nil
 }
 
 func GetUsersFromQuery(db *gorm.DB, query string) ([]User, error) {
@@ -153,4 +228,37 @@ func GetUsersFromQuery(db *gorm.DB, query string) ([]User, error) {
 	}
 
 	return users, nil
+}
+
+func getUsernamesString(peopleInConversations []PeopleInConversations) string {
+	var usernames []string
+	for _, user := range peopleInConversations {
+		usernames = append(usernames, `'`+user.Username+`'`)
+	}
+	usernamesString := strings.Join(usernames, ", ")
+
+	return usernamesString
+}
+
+func getNameByConversationId(
+	conversationId uint,
+	peopleInConversations []PeopleInConversations,
+	users []User,
+	conversations []Conversation,
+) (string, string) {
+	for _, conversation := range conversations {
+		for _, personInConversation := range peopleInConversations {
+			if personInConversation.ConversationId == conversationId {
+				for _, user := range users {
+					if user.Username == personInConversation.Username {
+						return user.Firstname, user.ProfilePicture
+					}
+				}
+			}
+		}
+		if conversation.Id == conversationId {
+			return conversation.Name, conversation.Picture
+		}
+	}
+	return "", ""
 }
