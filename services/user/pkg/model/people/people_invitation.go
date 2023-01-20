@@ -22,6 +22,10 @@ type People struct {
 	ProfilePicture string `json:"profilePicture"`
 }
 
+type AcceptInvite struct {
+	Id uint
+}
+
 func (PeopleInvitationTable) TableName() string {
 	return "people_invitations"
 }
@@ -67,6 +71,10 @@ func GetPeople(db *gorm.DB, t *People) ([]People, error) {
 	}
 
 	return people, nil
+}
+
+func AcceptInvitation(db *gorm.DB, t *AcceptInvite) error {
+	return db.Table("people_invitations").Where("id = ?", t.Id).Update("confirmed", 1).Error
 }
 
 func GetPeopleFromQuery(db *gorm.DB, query string) ([]People, error) {

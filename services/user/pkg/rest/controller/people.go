@@ -56,3 +56,27 @@ func GetPeople(c *fiber.Ctx) error {
 		Data:    people,
 	})
 }
+
+// AcceptPeopleInvitation POST /accept/people/invitation
+func AcceptPeopleInvitation(c *fiber.Ctx) error {
+	t := &people.AcceptInvite{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := people.AcceptInvitation(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "succes",
+		Message: "Invitation succesfully accepted!",
+	})
+}
