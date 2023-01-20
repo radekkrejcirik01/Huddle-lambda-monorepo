@@ -23,7 +23,8 @@ type People struct {
 }
 
 type AcceptInvite struct {
-	Id uint
+	Id    uint
+	Value int
 }
 
 func (PeopleInvitationTable) TableName() string {
@@ -74,7 +75,7 @@ func GetPeople(db *gorm.DB, t *People) ([]People, error) {
 }
 
 func AcceptInvitation(db *gorm.DB, t *AcceptInvite) error {
-	return db.Table("people_invitations").Where("id = ?", t.Id).Update("confirmed", 1).Error
+	return db.Table("people_invitations").Where("id = ?", t.Id).Update("confirmed", t.Value).Error
 }
 
 func GetPeopleFromQuery(db *gorm.DB, query string) ([]People, error) {
