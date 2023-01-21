@@ -59,7 +59,7 @@ type Notification struct {
 }
 
 func GetMessages(db *gorm.DB, t *ConversationId) ([]MessageResponse, error) {
-	var messages []MessageResponse
+	var messages []Message
 	if err := db.Where("conversation_id = ?", t.ConversationId).Order("id DESC").Find(&messages).Error; err != nil {
 		return []MessageResponse{}, err
 	}
@@ -82,8 +82,15 @@ func GetMessages(db *gorm.DB, t *ConversationId) ([]MessageResponse, error) {
 	for _, message := range messages {
 		for _, user := range users {
 			if message.Sender == user.Username {
-				message.ProfilePicture = user.ProfilePicture
-				result = append(result, message)
+				result = append(result, MessageResponse{
+					Id:             message.Id,
+					Sender:         message.Sender,
+					ProfilePicture: user.ProfilePicture,
+					ConversationId: message.ConversationId,
+					Message:        message.Message,
+					Time:           message.Time,
+					IsRead:         message.IsRead,
+				})
 			}
 		}
 	}
