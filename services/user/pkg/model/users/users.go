@@ -70,12 +70,8 @@ func GetUser(db *gorm.DB, t *User) (UserGet, error) {
 	}
 
 	var unreadMessagesCount int64
-	if err := db.Table("last_read_messages").
-		Where(`message_id NOT IN( SELECT id AS message_id FROM messages
-			WHERE id IN( SELECT MAX(id) FROM messages WHERE conversation_id
-			IN( SELECT conversation_id FROM people_in_conversations WHERE username = ?)
-			GROUP BY conversation_id)) AND username = ? GROUP BY message_id`, t.Username, t.Username).
-		Count(&unreadMessagesCount).Error; err != nil {
+	queryUnreadMessageCount := `SELECT COUNT(*) FROM (SELECT id AS message_id FROM messages WHERE id IN( SELECT MAX(id) FROM messages WHERE conversation_id IN( SELECT conversation_id FROM people_in_conversations WHERE username = '` + t.Username + `') GROUP BY conversation_id)) T1 WHERE T1.message_id NOT IN( SELECT message_id FROM last_read_messages WHERE username = '` + t.Username + `') GROUP BY message_id`
+	if err := db.Raw(queryUnreadMessageCount).Scan(&unreadMessagesCount).Error; err != nil {
 		return UserGet{}, err
 	}
 
