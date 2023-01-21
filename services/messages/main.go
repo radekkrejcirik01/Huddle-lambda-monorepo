@@ -19,7 +19,8 @@ func init() {
 	if err := database.DB.AutoMigrate(
 		&messages.Message{},
 		&messages.ConversationsTable{},
-		&messages.PeopleInConversations{}); err != nil {
+		&messages.PeopleInConversations{},
+		&messages.LastReadMessage{}); err != nil {
 		log.Fatal(err)
 	}
 

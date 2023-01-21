@@ -87,8 +87,8 @@ func GetMessages(c *fiber.Ctx) error {
 }
 
 // UpdateRead POST /update/read
-func UpdateRead(c *fiber.Ctx) error {
-	t := &messages.MessagesBody{}
+func UpdatLastRead(c *fiber.Ctx) error {
+	t := &messages.LastReadMessage{}
 
 	if err := c.BodyParser(t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -97,7 +97,7 @@ func UpdateRead(c *fiber.Ctx) error {
 		})
 	}
 
-	if err := messages.UpdateRead(database.DB, t); err != nil {
+	if err := messages.UpdateLastRead(database.DB, t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
 			Message: err.Error(),

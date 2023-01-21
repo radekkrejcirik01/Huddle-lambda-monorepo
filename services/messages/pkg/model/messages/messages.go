@@ -29,19 +29,14 @@ type ConversationId struct {
 	ConversationId uint
 }
 
-type MessagesBody struct {
-	Username string
-	User     string
-}
-
 type MessageResponse struct {
-	Id             uint   `gorm:"primary_key;auto_increment;not_null" json:"id"`
-	Sender         string `json:"sender"`
-	ProfilePicture string `json:"profilePicture"`
-	ConversationId uint   `json:"conversationId"`
-	Message        string `json:"message"`
-	Time           string `json:"time"`
-	IsRead         uint   `gorm:"default:0" json:"isRead"`
+	Id             uint     `gorm:"primary_key;auto_increment;not_null" json:"id"`
+	Sender         string   `json:"sender"`
+	ProfilePicture string   `json:"profilePicture"`
+	ConversationId uint     `json:"conversationId"`
+	Message        string   `json:"message"`
+	Time           string   `json:"time"`
+	ReadBy         []ReadBy `json:"readBy"`
 }
 type SentMessage struct {
 	Sender         string
@@ -58,6 +53,11 @@ type Notification struct {
 	Devices []string
 }
 
+type ReadBy struct {
+	Username       string `json:"username"`
+	ProfilePicture string `json:"profilePicture"`
+}
+
 func GetMessages(db *gorm.DB, t *ConversationId) ([]MessageResponse, error) {
 	var messages []Message
 	if err := db.Where("conversation_id = ?", t.ConversationId).Order("id DESC").Find(&messages).Error; err != nil {
@@ -65,16 +65,24 @@ func GetMessages(db *gorm.DB, t *ConversationId) ([]MessageResponse, error) {
 	}
 
 	var usernames []string
-	for _, user := range messages {
-		if !contains(usernames, user.Sender) {
-			usernames = append(usernames, `'`+user.Sender+`'`)
-		}
+	if err := db.Table("people_in_conversations").Select("username").Where("conversation_id = ?", t.ConversationId).Find(&usernames).Error; err != nil {
+		return []MessageResponse{}, err
 	}
 
-	usernamesString := strings.Join(usernames, ", ")
+	var usernamesArray []string
+	for _, username := range usernames {
+		usernamesArray = append(usernamesArray, `'`+username+`'`)
+	}
+
+	usernamesString := strings.Join(usernamesArray, ", ")
 
 	var users []User
 	if err := db.Table("users").Select("username, firstname, profile_picture").Where(`username IN (` + usernamesString + `)`).Find(&users).Error; err != nil {
+		return []MessageResponse{}, err
+	}
+
+	var lastReads []LastReadMessage
+	if err := db.Table("last_read_messages").Where("conversation_id = ?", t.ConversationId).Find(&lastReads).Error; err != nil {
 		return []MessageResponse{}, err
 	}
 
@@ -89,13 +97,31 @@ func GetMessages(db *gorm.DB, t *ConversationId) ([]MessageResponse, error) {
 					ConversationId: message.ConversationId,
 					Message:        message.Message,
 					Time:           message.Time,
-					IsRead:         message.IsRead,
+					ReadBy:         getReadByMessageId(lastReads, message, users),
 				})
 			}
 		}
 	}
 
 	return result, nil
+}
+
+func getReadByMessageId(lastReads []LastReadMessage, message Message, users []User) []ReadBy {
+	var readBy []ReadBy
+	for _, lastRead := range lastReads {
+		if lastRead.MessageId == message.Id {
+			for _, user := range users {
+				if user.Username == lastRead.Username && message.Sender != user.Username {
+					readBy = append(readBy, ReadBy{
+						Username:       user.Username,
+						ProfilePicture: user.ProfilePicture,
+					})
+				}
+			}
+		}
+	}
+
+	return readBy
 }
 
 // SendMessage send message
@@ -166,19 +192,4 @@ func SendNotification(t *Notification) error {
 	}
 
 	return nil
-}
-
-// UpdateRead update message as read
-func UpdateRead(db *gorm.DB, t *MessagesBody) error {
-	return db.Table("messages").Where("sender = ? AND receiver = ?", t.User, t.Username).Update("is_read", 1).Error
-}
-
-func contains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
-		}
-	}
-
-	return false
 }

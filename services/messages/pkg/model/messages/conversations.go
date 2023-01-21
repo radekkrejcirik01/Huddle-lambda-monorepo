@@ -36,11 +36,11 @@ type ConversationList struct {
 }
 
 type Messages struct {
+	Id             uint
 	Sender         string
 	ConversationId uint
 	Message        string
-	time           string
-	IsRead         uint
+	Time           string
 }
 
 type Conversation struct {
@@ -116,6 +116,7 @@ func CreateConversation(db *gorm.DB, t *ConversationCreate) (uint, error) {
 func GetConversationsList(db *gorm.DB, t *Username, page string) ([]ConversationList, error) {
 	queryGetMessages := `
 			SELECT
+				id,
 				sender,
 				conversation_id,
 				message,
@@ -183,6 +184,11 @@ func GetConversationsList(db *gorm.DB, t *Username, page string) ([]Conversation
 		users = usersFromQuery
 	}
 
+	var lastReads []LastReadMessage
+	if err := db.Table("last_read_messages").Where("username = ?", t.Username).Find(&lastReads).Error; err != nil {
+		return []ConversationList{}, err
+	}
+
 	var result []ConversationList
 	for _, message := range messages {
 		name, picture := getNameByConversationId(
@@ -195,12 +201,23 @@ func GetConversationsList(db *gorm.DB, t *Username, page string) ([]Conversation
 			Name:    name,
 			Picture: picture,
 			Message: message.Message,
-			Time:    message.time,
-			IsRead:  message.IsRead,
+			Time:    message.Time,
+			IsRead:  getIsRead(lastReads, message),
 		})
 	}
 
 	return result, nil
+}
+
+func getIsRead(lastReads []LastReadMessage, message Messages) uint {
+	for _, lastRead := range lastReads {
+		if lastRead.ConversationId == message.ConversationId {
+			if lastRead.MessageId == message.Id {
+				return 1
+			}
+		}
+	}
+	return 0
 }
 
 func GetMessagesFromQuery(db *gorm.DB, query string) ([]Messages, error) {
