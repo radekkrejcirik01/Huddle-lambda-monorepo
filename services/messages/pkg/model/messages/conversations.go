@@ -15,6 +15,7 @@ type ConversationsTable struct {
 
 type ConversationCreate struct {
 	Id        uint
+	Name      string
 	Usernames []string
 }
 
@@ -65,27 +66,8 @@ func CreateConversation(db *gorm.DB, t *ConversationCreate) (uint, error) {
 	usernamesString := strings.Join(usernames, ", ")
 	usernamesCount := len(t.Usernames)
 
-	query := `SELECT
-					conversation_id
-				FROM
-					people_in_conversations
-				WHERE
-					conversation_id IN(
-						SELECT
-							conversation_id FROM people_in_conversations
-						WHERE
-							username IN(` + usernamesString + `)
-						GROUP BY
-							conversation_id
-						HAVING
-							COUNT(conversation_id) = ` + strconv.Itoa(usernamesCount) + `)
-				GROUP BY
-					conversation_id
-				HAVING
-					COUNT(conversation_id) = ` + strconv.Itoa(usernamesCount)
-
 	var conversationIds []uint
-	if err := db.Raw(query).Scan(&conversationIds).Error; err != nil {
+	if err := db.Table("people_in_conversations").Select("conversation_id").Where(`conversation_id IN( SELECT conversation_id FROM people_in_conversations WHERE username IN(` + usernamesString + `) GROUP BY conversation_id HAVING COUNT(conversation_id) = ` + strconv.Itoa(usernamesCount) + `) GROUP BY conversation_id HAVING COUNT(conversation_id) = ` + strconv.Itoa(usernamesCount)).Find(&conversationIds).Error; err != nil {
 		return 0, err
 	}
 
@@ -93,7 +75,24 @@ func CreateConversation(db *gorm.DB, t *ConversationCreate) (uint, error) {
 		return conversationIds[0], nil
 	}
 
-	if err := db.Table("conversations").Create(&t).Error; err != nil {
+	if len(t.Usernames) > 2 {
+		var firstnames []string
+		if err := db.Table("users").Select("firstname").Where(`username IN (` + usernamesString + `)`).Find(&firstnames).Error; err != nil {
+			return 0, err
+		}
+
+		var name string
+		for i, firstname := range firstnames {
+			if i == 0 {
+				name = firstname
+			} else {
+				name += ` + ` + firstname
+			}
+		}
+		t.Name = name
+	}
+
+	if err := db.Table("conversations").Create(t).Error; err != nil {
 		return 0, err
 	}
 
