@@ -3,11 +3,14 @@ package messages
 import (
 	"log"
 	"strings"
+	"time"
 
 	"github.com/appleboy/go-fcm"
 	"github.com/radekkrejcirik01/PingMe-backend/services/messages/pkg/database"
 	"gorm.io/gorm"
 )
+
+const timeFormat = "2006-01-02 15:04:05"
 
 type Message struct {
 	Id             uint   `gorm:"primary_key;auto_increment;not_null" json:"id"`
@@ -81,14 +84,16 @@ func GetMessages(db *gorm.DB, t *ConversationId) ([]Message, error) {
 
 // SendMessage send message
 func SendMessage(db *gorm.DB, t *SentMessage) error {
+	time := time.Now()
+	t.Time = time.Format(timeFormat)
 	create := Message{
-		Sender:  t.Sender,
-		Message: t.Message,
-		Time:    t.Time,
+		Sender:         t.Sender,
+		ConversationId: t.ConversationId,
+		Message:        t.Message,
+		Time:           t.Time,
 	}
 
-	err := db.Select("sender", "receiver", "message", "time").Create(&create).Error
-	if err == nil {
+	if err := db.Table("messages").Create(&create).Error; err == nil {
 		tokens := &[]string{}
 		if err := GetUserTokensByUser(db, tokens, t.Sender); err != nil {
 			return nil
@@ -104,7 +109,7 @@ func SendMessage(db *gorm.DB, t *SentMessage) error {
 		return err
 	}
 
-	return err
+	return nil
 }
 
 func GetUserTokensByUser(db *gorm.DB, t *[]string, user string) error {
