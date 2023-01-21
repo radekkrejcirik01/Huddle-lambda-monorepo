@@ -13,13 +13,12 @@ import (
 const timeFormat = "2006-01-02 15:04:05"
 
 type Message struct {
-	Id             uint   `gorm:"primary_key;auto_increment;not_null" json:"id"`
-	Sender         string `json:"sender"`
-	ProfilePicture string `json:"profilePicture"`
-	ConversationId uint   `json:"conversationId"`
-	Message        string `json:"message"`
-	Time           string `json:"time"`
-	IsRead         uint   `gorm:"default:0" json:"isRead"`
+	Id             uint `gorm:"primary_key;auto_increment;not_null"`
+	Sender         string
+	ConversationId uint
+	Message        string
+	Time           string
+	IsRead         uint
 }
 
 func (Message) TableName() string {
@@ -33,6 +32,16 @@ type ConversationId struct {
 type MessagesBody struct {
 	Username string
 	User     string
+}
+
+type MessageResponse struct {
+	Id             uint   `gorm:"primary_key;auto_increment;not_null" json:"id"`
+	Sender         string `json:"sender"`
+	ProfilePicture string `json:"profilePicture"`
+	ConversationId uint   `json:"conversationId"`
+	Message        string `json:"message"`
+	Time           string `json:"time"`
+	IsRead         uint   `gorm:"default:0" json:"isRead"`
 }
 type SentMessage struct {
 	Sender         string
@@ -49,10 +58,10 @@ type Notification struct {
 	Devices []string
 }
 
-func GetMessages(db *gorm.DB, t *ConversationId) ([]Message, error) {
-	var messages []Message
+func GetMessages(db *gorm.DB, t *ConversationId) ([]MessageResponse, error) {
+	var messages []MessageResponse
 	if err := db.Where("conversation_id = ?", t.ConversationId).Order("id DESC").Find(&messages).Error; err != nil {
-		return []Message{}, err
+		return []MessageResponse{}, err
 	}
 
 	var usernames []string
@@ -66,10 +75,10 @@ func GetMessages(db *gorm.DB, t *ConversationId) ([]Message, error) {
 
 	var users []User
 	if err := db.Table("users").Select("username, firstname, profile_picture").Where(`username IN (` + usernamesString + `)`).Find(&users).Error; err != nil {
-		return []Message{}, err
+		return []MessageResponse{}, err
 	}
 
-	var result []Message
+	var result []MessageResponse
 	for _, message := range messages {
 		for _, user := range users {
 			if message.Sender == user.Username {
