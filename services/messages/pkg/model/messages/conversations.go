@@ -120,8 +120,7 @@ func GetConversationsList(db *gorm.DB, t *Username, page string) ([]Conversation
 				sender,
 				conversation_id,
 				message,
-				time,
-				is_read
+				time
 			FROM
 				messages
 			WHERE

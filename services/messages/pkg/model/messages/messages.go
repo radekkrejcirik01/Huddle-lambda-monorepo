@@ -18,7 +18,6 @@ type Message struct {
 	ConversationId uint
 	Message        string
 	Time           string
-	IsRead         uint
 }
 
 func (Message) TableName() string {
@@ -43,7 +42,6 @@ type SentMessage struct {
 	ConversationId uint
 	Message        string
 	Time           string
-	IsRead         uint
 }
 
 type Notification struct {
