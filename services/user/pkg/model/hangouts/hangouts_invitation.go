@@ -8,7 +8,8 @@ type HangoutsInvitationTable struct {
 	User      string
 	Username  string
 	Time      string
-	Confirmed uint
+	Confirmed int `gorm:"default:0"`
+	Seen      int `gorm:"default:0"`
 }
 
 type AcceptInvite struct {

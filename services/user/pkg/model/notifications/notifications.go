@@ -30,6 +30,12 @@ type ProfilePictures struct {
 
 // Get notifications from DB
 func GetNotifications(db *gorm.DB, t *Notification) ([]NotificationsData, error) {
+	db.Transaction(func(tx *gorm.DB) error {
+		tx.Table("people_invitations").Where("username = ?", t.Username).Update("seen", 1)
+		tx.Table("hangouts_invitations").Where("username = ?", t.Username).Update("seen", 1)
+		return nil
+	})
+
 	query := `
 				SELECT
 				id,

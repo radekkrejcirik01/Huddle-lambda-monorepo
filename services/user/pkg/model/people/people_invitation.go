@@ -14,6 +14,7 @@ type PeopleInvitationTable struct {
 	Username  string
 	Time      string
 	Confirmed int `gorm:"default:0"`
+	Seen      int `gorm:"default:0"`
 }
 
 type People struct {
