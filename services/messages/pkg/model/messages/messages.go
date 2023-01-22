@@ -134,8 +134,20 @@ func SendMessage(db *gorm.DB, t *SentMessage) error {
 	}
 
 	if err := db.Table("messages").Create(&create).Error; err == nil {
+		var usernames []string
+		if err := db.Table("people_in_conversations").Select("username").Where("conversation_id = ? AND username != ?", t.ConversationId, t.Sender).Find(&usernames).Error; err != nil {
+			return err
+		}
+
+		var usernamesArray []string
+		for _, username := range usernames {
+			usernamesArray = append(usernamesArray, `'`+username+`'`)
+		}
+
+		usernamesString := strings.Join(usernamesArray, ", ")
+
 		tokens := &[]string{}
-		if err := GetUserTokensByUser(db, tokens, t.Sender); err != nil {
+		if err := GetTokensByUsernames(db, tokens, usernamesString); err != nil {
 			return nil
 		}
 		notification := Notification{
@@ -152,8 +164,8 @@ func SendMessage(db *gorm.DB, t *SentMessage) error {
 	return nil
 }
 
-func GetUserTokensByUser(db *gorm.DB, t *[]string, user string) error {
-	return db.Table("devices").Select("device_token").Where("username = ?", user).Find(t).Error
+func GetTokensByUsernames(db *gorm.DB, t *[]string, usernames string) error {
+	return db.Table("devices").Select("device_token").Where(`username IN (` + usernames + `)`).Find(t).Error
 }
 
 func SendNotification(t *Notification) error {
