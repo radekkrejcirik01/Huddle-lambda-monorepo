@@ -17,5 +17,5 @@ func SaveDevice(db *gorm.DB, t *Device) error {
 }
 
 func DeleteDevice(db *gorm.DB, t *Device) error {
-	return db.Where("email = ? AND device_token = ?", t.Username, t.DeviceToken).Delete(t).Error
+	return db.Where("username = ? AND device_token = ?", t.Username, t.DeviceToken).Delete(t).Error
 }
