@@ -5,10 +5,10 @@
 3. zip -r user.zip .
 
 ## Create
-aws lambda create-function --function-name PingMe-user --zip-file fileb://user.zip --handler main --runtime go1.x --role "arn:aws:iam::409186456204:role/lambda-basic-execution"
+aws lambda create-function --function-name user --zip-file fileb://user.zip --handler main --runtime go1.x --role "arn:aws:iam::832685173872:role/lambda-basic-execution"
 
 ## Update
-aws lambda update-function-code --function-name PingMe-user --zip-file fileb://user.zip
+aws lambda update-function-code --function-name user --zip-file fileb://user.zip
 
 ## Invoke
 aws lambda invoke --function-name user --invocation-type "RequestResponse" response.txt
