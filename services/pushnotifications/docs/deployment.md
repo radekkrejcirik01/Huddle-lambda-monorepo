@@ -5,10 +5,10 @@
 3. zip -r pushnotifications.zip .
 
 ## Create
-aws lambda create-function --function-name PingMe-pushnotifications --zip-file fileb://pushnotifications.zip --handler main --runtime go1.x --role "arn:aws:iam::409186456204:role/lambda-basic-execution"
+aws lambda create-function --function-name pushnotifications --zip-file fileb://pushnotifications.zip --handler main --runtime go1.x --role "arn:aws:iam::832685173872:role/lambda-basic-execution"
 
 ## Update
-aws lambda update-function-code --function-name PingMe-pushnotifications --zip-file fileb://pushnotifications.zip
+aws lambda update-function-code --function-name pushnotifications --zip-file fileb://pushnotifications.zip
 
 ## Invoke
 aws lambda invoke --function-name pushnotifications --invocation-type "RequestResponse" response.txt
