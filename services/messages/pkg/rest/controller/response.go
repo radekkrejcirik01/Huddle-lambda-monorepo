@@ -12,17 +12,17 @@ type Response struct {
 type ResponseCreateConversation struct {
 	Status         string `json:"status"`
 	Message        string `json:"message"`
-	ConversationId uint   `json:"conversationId"`
+	ConversationId uint   `json:"conversationId,omitempty"`
 }
 
 type ResponseConversationList struct {
 	Status  string                      `json:"status"`
 	Message string                      `json:"message"`
-	Data    []messages.ConversationList `json:"data"`
+	Data    []messages.ConversationList `json:"data,omitempty"`
 }
 
 type ResponseMessages struct {
 	Status  string                     `json:"status"`
 	Message string                     `json:"message"`
-	Data    []messages.MessageResponse `json:"data"`
+	Data    []messages.MessageResponse `json:"data,omitempty"`
 }
