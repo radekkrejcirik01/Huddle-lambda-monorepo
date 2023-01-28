@@ -6,6 +6,20 @@ import (
 	"gorm.io/gorm"
 )
 
+type AcceptedInvitations struct {
+	Id       uint `gorm:"primary_key;auto_increment;not_null"`
+	EventId  uint
+	User     string
+	Username string
+	Time     string
+	Type     string
+	Seen     int `gorm:"default:0"`
+}
+
+func (AcceptedInvitations) TableName() string {
+	return "accepted_invitations"
+}
+
 type Notification struct {
 	Id        uint
 	Username  string

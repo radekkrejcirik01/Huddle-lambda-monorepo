@@ -9,6 +9,7 @@ import (
 	fiberadapter "github.com/awslabs/aws-lambda-go-api-proxy/fiber"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/database"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/hangouts"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/users"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/rest"
@@ -23,6 +24,7 @@ func init() {
 		&people.PeopleInvitationTable{},
 		&hangouts.HangoutsTable{},
 		&hangouts.HangoutsInvitationTable{},
+		&notifications.AcceptedInvitations{},
 	); err != nil {
 		log.Fatal(err)
 	}
