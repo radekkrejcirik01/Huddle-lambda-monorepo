@@ -40,8 +40,8 @@ func AcceptHangout(db *gorm.DB, t *AcceptInvite) error {
 		User:     t.User,
 		Username: t.Username,
 		Time:     now,
-		Type:     "hangout",
+		Type:     "accepted_hangout",
 	}
 
-	return db.Table("accepted_invitations").Create(acceptedInvitation).Error
+	return db.Table("accepted_invitations").Create(&acceptedInvitation).Error
 }

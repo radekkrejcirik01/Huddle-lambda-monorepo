@@ -3,6 +3,7 @@ package people
 import (
 	"time"
 
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 	"gorm.io/gorm"
 )
 
@@ -24,8 +25,10 @@ type People struct {
 }
 
 type AcceptInvite struct {
-	Id    uint
-	Value int
+	Id       uint
+	Value    int
+	User     string
+	Username string
 }
 
 func (PeopleInvitationTable) TableName() string {
@@ -76,7 +79,20 @@ func GetPeople(db *gorm.DB, t *People) ([]People, error) {
 }
 
 func AcceptInvitation(db *gorm.DB, t *AcceptInvite) error {
-	return db.Table("people_invitations").Where("id = ?", t.Id).Update("confirmed", t.Value).Error
+	if err := db.Table("people_invitations").Where("id = ?", t.Id).Update("confirmed", t.Value).Error; err != nil {
+		return err
+	}
+
+	now := time.Now().Format(timeFormat)
+	acceptedInvitation := notifications.AcceptedInvitations{
+		EventId:  t.Id,
+		User:     t.User,
+		Username: t.Username,
+		Time:     now,
+		Type:     "accepted_people",
+	}
+
+	return db.Table("accepted_invitations").Create(&acceptedInvitation).Error
 }
 
 func GetPeopleFromQuery(db *gorm.DB, query string) ([]People, error) {

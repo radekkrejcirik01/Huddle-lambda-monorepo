@@ -87,7 +87,15 @@ func GetUser(db *gorm.DB, t *User) (UserGet, error) {
 					FROM
 						hangouts_invitations
 					WHERE
-						username = '` + t.Username + `' AND seen = 0) T1`
+						username = '` + t.Username + `' AND seen = 0
+					UNION ALL
+					SELECT
+						id
+					FROM
+						accepted_invitations
+					WHERE
+						username = '` + t.Username + `'
+						AND seen = 0) T1`
 	if err := db.Raw(query).Count(&notificationsCount).Error; err != nil {
 		return UserGet{}, err
 	}

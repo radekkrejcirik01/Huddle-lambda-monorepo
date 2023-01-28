@@ -47,6 +47,7 @@ func GetNotifications(db *gorm.DB, t *Notification) ([]NotificationsData, error)
 	db.Transaction(func(tx *gorm.DB) error {
 		tx.Table("people_invitations").Where("username = ?", t.Username).Update("seen", 1)
 		tx.Table("hangouts_invitations").Where("username = ?", t.Username).Update("seen", 1)
+		tx.Table("accepted_invitations").Where("username = ?", t.Username).Update("seen", 1)
 		return nil
 	})
 
@@ -70,6 +71,17 @@ func GetNotifications(db *gorm.DB, t *Notification) ([]NotificationsData, error)
 				'hangout' AS type
 			FROM
 				hangouts_invitations
+			WHERE
+				username = '` + t.Username + `'
+			UNION ALL
+			SELECT
+				event_id,
+				USER AS username,
+				time,
+				NULL AS confirmed,
+				TYPE
+			FROM
+				accepted_invitations
 			WHERE
 				username = '` + t.Username + `'
 			ORDER BY
