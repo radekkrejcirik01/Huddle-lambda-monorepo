@@ -32,14 +32,10 @@ func (User) TableName() string {
 }
 
 type UplaodProfilePictureBody struct {
-	Username string
-	Key      string
-	Buffer   string
-}
-
-type UpdatePicture struct {
-	Username string
-	ImageUrl string
+	Username  string
+	Key       string
+	Buffer    string
+	IsHangout bool
 }
 
 // Create new User in DB
@@ -145,8 +141,10 @@ func UplaodProfilePicture(db *gorm.DB, t *UplaodProfilePictureBody) (string, err
 		return "", err
 	}
 
-	if err := db.Table("users").Where("username = ?", t.Username).Update("profile_picture", result.Location).Error; err != nil {
-		return "", err
+	if !t.IsHangout {
+		if err := db.Table("users").Where("username = ?", t.Username).Update("profile_picture", result.Location).Error; err != nil {
+			return "", err
+		}
 	}
 
 	return result.Location, nil

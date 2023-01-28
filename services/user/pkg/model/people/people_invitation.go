@@ -43,9 +43,9 @@ func CreatePeopleInvitation(db *gorm.DB, t *PeopleInvitationTable) (string, erro
 	if exists {
 		time := time.Now()
 		t.Time = time.Format(timeFormat)
-		return "User succesfully invited! 🎉", db.Create(t).Error
+		return "Invitation sent! ✅", db.Create(t).Error
 	}
-	return "Sorry, this user does not exists 😔", err
+	return "We apologize, this user doesn't exist 😔", err
 }
 
 // Get people from DB
