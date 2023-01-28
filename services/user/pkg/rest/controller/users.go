@@ -55,3 +55,29 @@ func GetUser(c *fiber.Ctx) error {
 		Data:    user,
 	})
 }
+
+// UploadPhoto POST /upload/photo
+func UploadPhoto(c *fiber.Ctx) error {
+	t := &users.UplaodProfilePictureBody{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	imageUrl, err := users.UplaodProfilePicture(database.DB, t)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(UploadPhotoResponse{
+		Status:   "succes",
+		Message:  "Photo succesfully uploaded!",
+		ImageUrl: imageUrl,
+	})
+}

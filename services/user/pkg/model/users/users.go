@@ -1,6 +1,14 @@
 package users
 
 import (
+	"bytes"
+	"encoding/base64"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/database"
 	"gorm.io/gorm"
 )
 
@@ -21,6 +29,17 @@ type UserGet struct {
 
 func (User) TableName() string {
 	return "users"
+}
+
+type UplaodProfilePictureBody struct {
+	Username string
+	Key      string
+	Buffer   string
+}
+
+type UpdatePicture struct {
+	Username string
+	ImageUrl string
 }
 
 // Create new User in DB
@@ -88,4 +107,39 @@ func GetUser(db *gorm.DB, t *User) (UserGet, error) {
 	}
 
 	return result, nil
+}
+
+func UplaodProfilePicture(db *gorm.DB, t *UplaodProfilePictureBody) (string, error) {
+	accessKey, secretAccessKey := database.GetCredentials()
+
+	sess := session.Must(session.NewSession(
+		&aws.Config{
+			Region: aws.String("eu-central-1"),
+			Credentials: credentials.NewStaticCredentials(
+				accessKey,
+				secretAccessKey,
+				"", // a token will be created when the session it's used.
+			),
+		}))
+
+	// Create an uploader with the session and default options
+	uploader := s3manager.NewUploader(sess)
+
+	decode, _ := base64.StdEncoding.DecodeString(t.Buffer)
+	// Upload the file to S3.
+	result, err := uploader.Upload(&s3manager.UploadInput{
+		Bucket:      aws.String("notify-bucket-images"),
+		Key:         aws.String(t.Key),
+		Body:        bytes.NewReader(decode),
+		ContentType: aws.String("image/jpeg"),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	if err := db.Table("users").Where("username = ?", t.Username).Update("profile_picture", result.Location).Error; err != nil {
+		return "", err
+	}
+
+	return result.Location, nil
 }

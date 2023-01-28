@@ -11,11 +11,13 @@ import (
 )
 
 var (
-	dbhost     = ""
-	dbport     = ""
-	dbuser     = ""
-	dbpassword = ""
-	dbname     = ""
+	dbhost          = ""
+	dbport          = ""
+	dbuser          = ""
+	dbpassword      = ""
+	dbname          = ""
+	accessKey       = ""
+	secretAccessKey = ""
 )
 
 // DB is connected MySQL DB
@@ -32,6 +34,8 @@ func init() {
 	dbuser = os.Getenv("DBUSER")
 	dbpassword = os.Getenv("DBPASSWORD")
 	dbname = os.Getenv("DBNAME")
+	accessKey = os.Getenv("ACCESSKEY")
+	secretAccessKey = os.Getenv("SECRETACCESSKEY")
 }
 
 // Connect to MySQL server
@@ -55,4 +59,8 @@ func Connect() {
 // GetConfig for debuging
 func GetConfig() (string, string, string, string, string) {
 	return dbhost, dbport, dbuser, dbpassword, dbname
+}
+
+func GetCredentials() (string, string) {
+	return accessKey, secretAccessKey
 }

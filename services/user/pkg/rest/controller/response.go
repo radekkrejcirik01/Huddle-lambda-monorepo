@@ -41,3 +41,9 @@ type NotificationsResponse struct {
 	Message string                            `json:"message,omitempty"`
 	Data    []notifications.NotificationsData `json:"data,omitempty"`
 }
+
+type UploadPhotoResponse struct {
+	Status   string `json:"status"`
+	Message  string `json:"message,omitempty"`
+	ImageUrl string `json:"imageUrl,omitempty"`
+}
