@@ -183,6 +183,7 @@ func SendNotification(t *Notification) error {
 			Notification: &fcm.Notification{
 				Title: t.Title,
 				Body:  t.Body,
+				Badge: "1",
 				Sound: "notification.wav",
 			},
 		}

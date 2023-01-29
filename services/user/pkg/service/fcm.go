@@ -39,6 +39,7 @@ func SendNotification(t *FcmNotification) error {
 			Notification: &fcm.Notification{
 				Title: t.Title,
 				Body:  t.Body,
+				Badge: "1",
 				Sound: t.Sound,
 			},
 		}
