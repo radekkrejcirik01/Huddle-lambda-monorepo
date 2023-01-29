@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -23,11 +22,6 @@ var (
 var DB *gorm.DB
 
 func init() {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
 	dbhost = os.Getenv("DBHOST")
 	dbport = os.Getenv("DBPORT")
 	dbuser = os.Getenv("DBUSER")

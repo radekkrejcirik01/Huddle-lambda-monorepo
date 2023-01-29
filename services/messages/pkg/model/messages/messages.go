@@ -39,6 +39,7 @@ type MessageResponse struct {
 }
 type SentMessage struct {
 	Sender         string
+	Name           string
 	ConversationId uint
 	Message        string
 	Time           string
@@ -133,7 +134,8 @@ func SendMessage(db *gorm.DB, t *SentMessage) error {
 		Time:           t.Time,
 	}
 
-	if err := db.Table("messages").Create(&create).Error; err == nil {
+	err := db.Table("messages").Create(&create).Error
+	if err == nil {
 		var usernames []string
 		if err := db.Table("people_in_conversations").Select("username").Where("conversation_id = ? AND username != ?", t.ConversationId, t.Sender).Find(&usernames).Error; err != nil {
 			return err
@@ -152,16 +154,15 @@ func SendMessage(db *gorm.DB, t *SentMessage) error {
 		}
 		notification := Notification{
 			Sender:  t.Sender,
-			Title:   t.Sender,
+			Title:   t.Name,
 			Body:    t.Message,
 			Devices: *tokens,
 		}
 
 		SendNotification(&notification)
-		return err
+		return nil
 	}
-
-	return nil
+	return err
 }
 
 func GetTokensByUsernames(db *gorm.DB, t *[]string, usernames string) error {
@@ -182,7 +183,7 @@ func SendNotification(t *Notification) error {
 			Notification: &fcm.Notification{
 				Title: t.Title,
 				Body:  t.Body,
-				Sound: "default",
+				Sound: "notification.wav",
 			},
 		}
 
