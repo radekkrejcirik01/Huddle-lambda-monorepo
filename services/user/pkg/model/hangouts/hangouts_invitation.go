@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
 )
 
@@ -22,6 +23,7 @@ type AcceptInvite struct {
 	Value    int
 	User     string
 	Username string
+	Name     string
 }
 
 func (HangoutsInvitationTable) TableName() string {
@@ -43,5 +45,23 @@ func AcceptHangout(db *gorm.DB, t *AcceptInvite) error {
 		Type:     "accepted_hangout",
 	}
 
-	return db.Table("accepted_invitations").Create(&acceptedInvitation).Error
+	if rowsAffected := db.Table("accepted_invitations").Create(&acceptedInvitation).RowsAffected; rowsAffected == 0 {
+		return nil
+	}
+
+	tokens := &[]string{}
+	if err := service.GetTokensByUsername(db, tokens, t.Username); err != nil {
+		return nil
+	}
+
+	acceptHangoutInviteNotification := service.FcmNotification{
+		Sender:  t.User,
+		Type:    "hangout",
+		Body:    t.Name + " accepted hangout invite!",
+		Sound:   "notification.wav",
+		Devices: *tokens,
+	}
+	service.SendNotification(&acceptHangoutInviteNotification)
+
+	return nil
 }

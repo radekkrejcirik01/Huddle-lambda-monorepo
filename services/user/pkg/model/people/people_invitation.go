@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
 )
 
@@ -29,6 +30,14 @@ type AcceptInvite struct {
 	Value    int
 	User     string
 	Username string
+	Name     string
+}
+type Notification struct {
+	Sender  string
+	Title   string
+	Body    string
+	Sound   string
+	Devices []string
 }
 
 func (PeopleInvitationTable) TableName() string {
@@ -38,14 +47,34 @@ func (PeopleInvitationTable) TableName() string {
 // Create new user invitatiom in DB
 func CreatePeopleInvitation(db *gorm.DB, t *PeopleInvitationTable) (string, error) {
 	var exists bool
-	err := db.Table("users").Select("count(*) > 0").Where("username = ?", t.Username).Find(&exists).Error
+	if err := db.Table("users").Select("count(*) > 0").Where("username = ?", t.Username).Find(&exists).Error; err != nil {
+		return "We apologize, we couldn't send invite 😔", err
+	}
 
 	if exists {
 		time := time.Now()
 		t.Time = time.Format(timeFormat)
-		return "Invitation sent! ✅", db.Create(t).Error
+
+		if err := db.Create(t).Error; err != nil {
+			return "We apologize, we couldn't send invite 😔", err
+		}
+
+		tokens := &[]string{}
+		if err := service.GetTokensByUsername(db, tokens, t.Username); err != nil {
+			return "", nil
+		}
+		friendInviteNotification := service.FcmNotification{
+			Sender:  t.User,
+			Type:    "people",
+			Body:    t.User + " sends friend invite",
+			Sound:   "default",
+			Devices: *tokens,
+		}
+		service.SendNotification(&friendInviteNotification)
+
+		return "Invitation sent! ✅", nil
 	}
-	return "We apologize, this user doesn't exist 😔", err
+	return "We apologize, this user doesn't exist 😔", nil
 }
 
 // Get people from DB
@@ -92,7 +121,24 @@ func AcceptInvitation(db *gorm.DB, t *AcceptInvite) error {
 		Type:     "accepted_people",
 	}
 
-	return db.Table("accepted_invitations").Create(&acceptedInvitation).Error
+	if rowsAffected := db.Table("accepted_invitations").FirstOrCreate(&acceptedInvitation).RowsAffected; rowsAffected == 0 {
+		return nil
+	}
+
+	tokens := &[]string{}
+	if err := service.GetTokensByUsername(db, tokens, t.Username); err != nil {
+		return nil
+	}
+	acceptFriendInviteNotification := service.FcmNotification{
+		Sender:  t.User,
+		Type:    "people",
+		Body:    t.Name + " accepted friend invite!",
+		Sound:   "default",
+		Devices: *tokens,
+	}
+	service.SendNotification(&acceptFriendInviteNotification)
+
+	return nil
 }
 
 func GetPeopleFromQuery(db *gorm.DB, query string) ([]People, error) {

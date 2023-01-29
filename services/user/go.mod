@@ -3,6 +3,7 @@ module github.com/radekkrejcirik01/PingMe-backend/services/user
 go 1.19
 
 require (
+	github.com/appleboy/go-fcm v0.1.5
 	github.com/aws/aws-lambda-go v1.36.1
 	github.com/aws/aws-sdk-go v1.44.189
 	github.com/awslabs/aws-lambda-go-api-proxy v0.13.3

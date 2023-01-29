@@ -31,14 +31,16 @@ type Notification struct {
 type NotificationsData struct {
 	Id             uint   `json:"id"`
 	Username       string `json:"username"`
+	Name           string `json:"name"`
 	Time           string `json:"time"`
 	ProfilePicture string `json:"profilePicture"`
 	Confirmed      int    `json:"confirmed"`
 	Type           string `json:"type"`
 }
 
-type ProfilePictures struct {
+type Profile struct {
 	Username       string
+	Firstname      string
 	ProfilePicture string
 }
 
@@ -94,20 +96,21 @@ func GetNotifications(db *gorm.DB, t *Notification) ([]NotificationsData, error)
 
 	usernames := getUsernames(notifications)
 
-	queryProfilePicures := `SELECT username, profile_picture FROM users WHERE username IN (` + usernames + `)`
-	profilePictures, err := GetProfilePicturesFromQuery(db, queryProfilePicures)
+	queryProfiles := `SELECT firstname, username, profile_picture FROM users WHERE username IN (` + usernames + `)`
+	profiles, err := GetProfilePicturesFromQuery(db, queryProfiles)
 	if err != nil {
 		return []NotificationsData{}, err
 	}
 
 	var result []NotificationsData
 	for _, notification := range notifications {
-		for _, profilePicture := range profilePictures {
-			if notification.Username == profilePicture.Username {
+		for _, profile := range profiles {
+			if notification.Username == profile.Username {
 				result = append(result, NotificationsData{
 					Id:             notification.Id,
 					Username:       notification.Username,
-					ProfilePicture: profilePicture.ProfilePicture,
+					Name:           profile.Firstname,
+					ProfilePicture: profile.ProfilePicture,
 					Time:           notification.Time,
 					Confirmed:      notification.Confirmed,
 					Type:           notification.Type,
@@ -119,7 +122,7 @@ func GetNotifications(db *gorm.DB, t *Notification) ([]NotificationsData, error)
 	return result, nil
 }
 
-func GetProfilePicturesFromQuery(db *gorm.DB, query string) ([]ProfilePictures, error) {
+func GetProfilePicturesFromQuery(db *gorm.DB, query string) ([]Profile, error) {
 	rows, err := db.Raw(query).Rows()
 	if err != nil {
 		return nil, err
@@ -127,7 +130,7 @@ func GetProfilePicturesFromQuery(db *gorm.DB, query string) ([]ProfilePictures, 
 
 	defer rows.Close()
 
-	var profilePictures []ProfilePictures
+	var profilePictures []Profile
 	for rows.Next() {
 		db.ScanRows(rows, &profilePictures)
 	}

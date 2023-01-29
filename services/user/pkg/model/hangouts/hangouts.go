@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
 )
 
@@ -25,6 +26,7 @@ type HangoutsTable struct {
 
 type HangoutInvite struct {
 	User     string
+	Name     string
 	Username string
 	Time     string
 	Place    string
@@ -32,6 +34,7 @@ type HangoutInvite struct {
 
 type GroupHangoutInvite struct {
 	User      string
+	Name      string
 	Title     string
 	Usernames []string
 	Time      string
@@ -57,6 +60,13 @@ func (HangoutsTable) TableName() string {
 	return "hangouts"
 }
 
+type Notification struct {
+	Sender  string
+	Title   string
+	Body    string
+	Devices []string
+}
+
 // Create new hangout in DB
 func CreateHangout(db *gorm.DB, t *HangoutInvite) error {
 	hangout := HangoutsTable{
@@ -77,7 +87,24 @@ func CreateHangout(db *gorm.DB, t *HangoutInvite) error {
 		Time:      now,
 		Confirmed: 0,
 	}
-	return db.Table("hangouts_invitations").Create(&hangoutInvitation).Error
+
+	if err := db.Table("hangouts_invitations").Create(&hangoutInvitation).Error; err != nil {
+		return err
+	}
+
+	tokens := &[]string{}
+	if err := service.GetTokensByUsername(db, tokens, t.Username); err != nil {
+		return nil
+	}
+	hangoutNotification := service.FcmNotification{
+		Sender:  t.User,
+		Type:    "hangout",
+		Title:   t.Name + " sends a hangout!",
+		Sound:   "notification.wav",
+		Devices: *tokens,
+	}
+	service.SendNotification(&hangoutNotification)
+	return nil
 }
 
 // Create new group hangout in DB
@@ -106,7 +133,32 @@ func CreateGroupHangout(db *gorm.DB, t *GroupHangoutInvite) error {
 			Confirmed: 0,
 		})
 	}
-	return db.Table("hangouts_invitations").Create(&hangoutInvitations).Error
+
+	if err := db.Table("hangouts_invitations").Create(&hangoutInvitations).Error; err != nil {
+		return err
+	}
+
+	var usernamesArray []string
+	for _, username := range t.Usernames {
+		usernamesArray = append(usernamesArray, `'`+username+`'`)
+	}
+
+	usernamesString := strings.Join(usernamesArray, ", ")
+
+	tokens := &[]string{}
+	if err := service.GetTokensByUsernames(db, tokens, usernamesString); err != nil {
+		return nil
+	}
+	groupHangoutNotification := service.FcmNotification{
+		Sender:  t.User,
+		Type:    "hangout",
+		Title:   t.Name + " created group hangout!",
+		Sound:   "default",
+		Devices: *tokens,
+	}
+
+	service.SendNotification(&groupHangoutNotification)
+	return nil
 }
 
 // Get all hangouts from DB
