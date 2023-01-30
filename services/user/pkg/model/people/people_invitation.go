@@ -46,17 +46,31 @@ func (PeopleInvitationTable) TableName() string {
 
 // Create new user invitatiom in DB
 func CreatePeopleInvitation(db *gorm.DB, t *PeopleInvitationTable) (string, error) {
+	errMessage := "We apologize, we couldn't send invite 😔"
+
 	var exists bool
 	if err := db.Table("users").Select("count(*) > 0").Where("username = ?", t.Username).Find(&exists).Error; err != nil {
-		return "We apologize, we couldn't send invite 😔", err
+		return errMessage, err
 	}
 
 	if exists {
+		var user string
+		if err := db.Table("people_invitations").Select("user").Where("(user = ? AND username = ?) OR (user = ? AND username = ?)", t.User, t.Username, t.Username, t.User).Find(&user).Error; err != nil {
+			return errMessage, err
+		}
+
+		if user == t.User {
+			return "Sorry, you already invite this user 🙂", nil
+		}
+		if user == t.Username {
+			return "This user already invited you. Please check your notifications 🙂", nil
+		}
+
 		time := time.Now()
 		t.Time = time.Format(timeFormat)
 
 		if err := db.Create(t).Error; err != nil {
-			return "We apologize, we couldn't send invite 😔", err
+			return errMessage, err
 		}
 
 		tokens := &[]string{}
