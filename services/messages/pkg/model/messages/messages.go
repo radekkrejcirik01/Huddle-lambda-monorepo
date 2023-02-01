@@ -46,10 +46,12 @@ type SentMessage struct {
 }
 
 type Notification struct {
-	Sender  string
-	Title   string
-	Body    string
-	Devices []string
+	ConversationId uint
+	Sender         string
+	Title          string
+	Body           string
+	Devices        []string
+	Type           string
 }
 
 type ReadBy struct {
@@ -153,10 +155,12 @@ func SendMessage(db *gorm.DB, t *SentMessage) error {
 			return nil
 		}
 		notification := Notification{
-			Sender:  t.Sender,
-			Title:   t.Name,
-			Body:    t.Message,
-			Devices: *tokens,
+			ConversationId: t.ConversationId,
+			Sender:         t.Sender,
+			Title:          t.Name,
+			Body:           t.Message,
+			Devices:        *tokens,
+			Type:           "message",
 		}
 
 		SendNotification(&notification)
@@ -177,8 +181,9 @@ func SendNotification(t *Notification) error {
 		msg := &fcm.Message{
 			To: token,
 			Data: map[string]interface{}{
-				"type":   "message",
-				"sender": t.Sender,
+				"conversationId": t.ConversationId,
+				"type":           t.Type,
+				"sender":         t.Sender,
 			},
 			Notification: &fcm.Notification{
 				Title: t.Title,
