@@ -60,6 +60,30 @@ func GetConversations(c *fiber.Ctx) error {
 	})
 }
 
+// DeleteConversation POST /delete/conversation
+func DeleteConversation(c *fiber.Ctx) error {
+	t := &messages.Delete{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := messages.DeleteConversation(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "succes",
+		Message: "Conversation succesfully deleted",
+	})
+}
+
 // GetMessages POST /get/messages
 func GetMessages(c *fiber.Ctx) error {
 	t := &messages.ConversationId{}

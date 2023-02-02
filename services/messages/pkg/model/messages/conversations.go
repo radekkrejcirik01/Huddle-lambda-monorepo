@@ -56,6 +56,11 @@ type User struct {
 	ProfilePicture string
 }
 
+type Delete struct {
+	ConversationId uint
+	Username       string
+}
+
 // CreateConversation create conversation
 func CreateConversation(db *gorm.DB, t *ConversationCreate) (uint, error) {
 	var usernames []string
@@ -187,8 +192,16 @@ func GetConversationsList(db *gorm.DB, t *Username, page string) ([]Conversation
 		return []ConversationList{}, err
 	}
 
+	var deletedConversations []uint
+	if err := db.Table("people_in_conversations").Select("conversation_id").Where("deleted = ?", 1).Find(&deletedConversations).Error; err != nil {
+		return []ConversationList{}, err
+	}
+
 	var result []ConversationList
 	for _, message := range messages {
+		if contains(deletedConversations, message.ConversationId) {
+			continue
+		}
 		name, picture := getNameByConversationId(
 			message.ConversationId,
 			peopleInConversations,
@@ -205,6 +218,11 @@ func GetConversationsList(db *gorm.DB, t *Username, page string) ([]Conversation
 	}
 
 	return result, nil
+}
+
+// DeleteConversation delete conversation
+func DeleteConversation(db *gorm.DB, t *Delete) error {
+	return db.Table("people_in_conversations").Where("conversation_id = ? AND username = ?", t.ConversationId, t.Username).Update("deleted", 1).Error
 }
 
 func getIsRead(lastReads []LastReadMessage, message Messages) uint {
@@ -313,4 +331,14 @@ func getNameByConversationId(
 		}
 	}
 	return "", ""
+}
+
+func contains(array []uint, value uint) bool {
+	for _, a := range array {
+		if a == value {
+			return true
+		}
+	}
+
+	return false
 }
