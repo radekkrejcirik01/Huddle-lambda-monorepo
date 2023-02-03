@@ -1,8 +1,6 @@
 package hangouts
 
 import (
-	"strings"
-
 	"gorm.io/gorm"
 )
 
@@ -55,13 +53,10 @@ func GetHangoutById(db *gorm.DB, t *HangoutId) (HangoutById, error) {
 		picture = user.ProfilePicture
 	}
 
-	string := strings.Fields(hangout.Time)
-	time := string[1]
-
 	result := HangoutById{
 		CreatedBy: hangout.CreatedBy,
 		Title:     title,
-		Time:      time,
+		Time:      hangout.Time,
 		Place:     hangout.Place,
 		Picture:   picture,
 		Usernames: usernames,
