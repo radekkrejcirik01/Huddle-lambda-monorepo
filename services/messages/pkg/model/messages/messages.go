@@ -1,11 +1,17 @@
 package messages
 
 import (
+	"bytes"
+	"encoding/base64"
 	"log"
 	"strings"
 	"time"
 
 	"github.com/appleboy/go-fcm"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/radekkrejcirik01/PingMe-backend/services/messages/pkg/database"
 	"gorm.io/gorm"
 )
@@ -18,6 +24,7 @@ type Message struct {
 	ConversationId uint
 	Message        string
 	Time           string
+	Url            string
 }
 
 func (Message) TableName() string {
@@ -36,6 +43,7 @@ type MessageResponse struct {
 	Message        string   `json:"message"`
 	Time           string   `json:"time"`
 	ReadBy         []ReadBy `json:"readBy"`
+	Url            string   `json:"url"`
 }
 type SentMessage struct {
 	Sender         string
@@ -44,6 +52,8 @@ type SentMessage struct {
 	ConversationId uint
 	Message        string
 	Time           string
+	Buffer         string
+	FileName       string
 }
 
 type Notification struct {
@@ -63,7 +73,7 @@ type ReadBy struct {
 
 func GetMessages(db *gorm.DB, t *ConversationId) ([]MessageResponse, error) {
 	var messages []Message
-	if err := db.Where("conversation_id = ?", t.ConversationId).Order("id DESC").Find(&messages).Error; err != nil {
+	if err := db.Table("messages").Where("conversation_id = ?", t.ConversationId).Order("id DESC").Find(&messages).Error; err != nil {
 		return []MessageResponse{}, err
 	}
 
@@ -101,6 +111,7 @@ func GetMessages(db *gorm.DB, t *ConversationId) ([]MessageResponse, error) {
 					Message:        message.Message,
 					Time:           message.Time,
 					ReadBy:         getReadByMessageId(lastReads, message, users),
+					Url:            message.Url,
 				})
 			}
 		}
@@ -129,6 +140,15 @@ func getReadByMessageId(lastReads []LastReadMessage, message Message, users []Us
 
 // SendMessage send message
 func SendMessage(db *gorm.DB, t *SentMessage) error {
+	var photoUrl string
+	if len(t.Buffer) > 0 {
+		url, err := UplaodPhoto(db, t.Sender, t.Buffer, t.FileName)
+		if err != nil {
+			return err
+		}
+		photoUrl = url
+	}
+
 	time := time.Now().UTC()
 	t.Time = time.Format(timeFormat)
 	create := Message{
@@ -136,6 +156,7 @@ func SendMessage(db *gorm.DB, t *SentMessage) error {
 		ConversationId: t.ConversationId,
 		Message:        t.Message,
 		Time:           t.Time,
+		Url:            photoUrl,
 	}
 
 	err := db.Table("messages").Create(&create).Error
@@ -170,6 +191,37 @@ func SendMessage(db *gorm.DB, t *SentMessage) error {
 		return nil
 	}
 	return err
+}
+
+func UplaodPhoto(db *gorm.DB, username string, buffer string, fileName string) (string, error) {
+	accessKey, secretAccessKey := database.GetCredentials()
+
+	sess := session.Must(session.NewSession(
+		&aws.Config{
+			Region: aws.String("eu-central-1"),
+			Credentials: credentials.NewStaticCredentials(
+				accessKey,
+				secretAccessKey,
+				"", // a token will be created when the session it's used.
+			),
+		}))
+
+	// Create an uploader with the session and default options
+	uploader := s3manager.NewUploader(sess)
+
+	decode, _ := base64.StdEncoding.DecodeString(buffer)
+	// Upload the file to S3.
+	result, err := uploader.Upload(&s3manager.UploadInput{
+		Bucket:      aws.String("notify-bucket-images"),
+		Key:         aws.String("messages-images/" + username + "/" + fileName),
+		Body:        bytes.NewReader(decode),
+		ContentType: aws.String("image/jpeg"),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return result.Location, nil
 }
 
 func GetTokensByUsernames(db *gorm.DB, t *[]string, usernames string) error {
