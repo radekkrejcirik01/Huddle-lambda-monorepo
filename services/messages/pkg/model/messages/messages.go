@@ -40,6 +40,7 @@ type MessageResponse struct {
 type SentMessage struct {
 	Sender         string
 	Name           string
+	Picture        string
 	ConversationId uint
 	Message        string
 	Time           string
@@ -49,6 +50,7 @@ type Notification struct {
 	ConversationId uint
 	Sender         string
 	Title          string
+	Picture        string
 	Body           string
 	Devices        []string
 	Type           string
@@ -127,7 +129,7 @@ func getReadByMessageId(lastReads []LastReadMessage, message Message, users []Us
 
 // SendMessage send message
 func SendMessage(db *gorm.DB, t *SentMessage) error {
-	time := time.Now()
+	time := time.Now().UTC()
 	t.Time = time.Format(timeFormat)
 	create := Message{
 		Sender:         t.Sender,
@@ -157,6 +159,7 @@ func SendMessage(db *gorm.DB, t *SentMessage) error {
 		notification := Notification{
 			ConversationId: t.ConversationId,
 			Sender:         t.Sender,
+			Picture:        t.Picture,
 			Title:          t.Name,
 			Body:           t.Message,
 			Devices:        *tokens,
@@ -184,6 +187,7 @@ func SendNotification(t *Notification) error {
 				"conversationId": t.ConversationId,
 				"type":           t.Type,
 				"sender":         t.Sender,
+				"picture":        t.Picture,
 			},
 			Notification: &fcm.Notification{
 				Title: t.Title,
