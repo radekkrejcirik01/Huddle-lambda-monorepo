@@ -80,7 +80,7 @@ func GetNotifications(db *gorm.DB, t *Notification) ([]NotificationsData, error)
 				event_id,
 				USER AS username,
 				time,
-				NULL AS confirmed,
+				1 AS confirmed,
 				TYPE
 			FROM
 				accepted_invitations
