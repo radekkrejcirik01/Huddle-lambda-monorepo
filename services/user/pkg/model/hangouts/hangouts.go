@@ -220,7 +220,6 @@ func GetHangouts(db *gorm.DB, t *GetHangout) ([]Hangouts, error) {
 		var hangoutsArray []HangoutsTable
 		for _, hangout := range hangouts {
 			if strings.Contains(hangout.Time, title) {
-				hangout.Time = GetTime(hangout.Time)
 				if hangout.Type == "hangout" {
 					for _, user := range users {
 						if user.Username == hangout.CreatedBy {
@@ -307,12 +306,6 @@ func GetTitles(hangouts []HangoutsTable) []string {
 	}
 
 	return titles
-}
-
-func GetTime(datetime string) string {
-	string := strings.Fields(datetime)
-	time := string[1]
-	return time[0:5]
 }
 
 func reverseHangoutsArray(hangoutsArray []HangoutsTable) []HangoutsTable {
