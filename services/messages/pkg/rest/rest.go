@@ -19,6 +19,7 @@ func Create() *fiber.App {
 
 	app.Post("/update/read", controller.UpdatLastRead)
 	app.Post("/send/message", controller.SendMessage)
+	app.Post("/send/typing", controller.SendTyping)
 
 	return app
 }

@@ -232,6 +232,19 @@ func SendNotification(t *Notification) error {
 	fcmClient := database.GetFcmClient()
 	tokens := t.Devices
 
+	fcmNotification := &fcm.Notification{
+		Title: t.Title,
+		Body:  t.Body,
+		Badge: "1",
+		Sound: "notification.wav",
+	}
+	contentAvailable := false
+
+	if t.Type == "conversationRead" {
+		fcmNotification = &fcm.Notification{}
+		contentAvailable = true
+	}
+
 	for _, token := range tokens {
 		msg := &fcm.Message{
 			To: token,
@@ -241,12 +254,8 @@ func SendNotification(t *Notification) error {
 				"sender":         t.Sender,
 				"picture":        t.Picture,
 			},
-			Notification: &fcm.Notification{
-				Title: t.Title,
-				Body:  t.Body,
-				Badge: "1",
-				Sound: "notification.wav",
-			},
+			Notification:     fcmNotification,
+			ContentAvailable: contentAvailable,
 		}
 
 		client, err := fcm.NewClient(fcmClient)

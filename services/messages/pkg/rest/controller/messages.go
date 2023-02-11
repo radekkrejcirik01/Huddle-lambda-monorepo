@@ -157,3 +157,27 @@ func SendMessage(c *fiber.Ctx) error {
 		Message: "Message succesfully sent",
 	})
 }
+
+// SendTyping POST /send/typing
+func SendTyping(c *fiber.Ctx) error {
+	t := &messages.Typing{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := messages.SendTyping(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "succes",
+		Message: "Typing succesfully sent",
+	})
+}
