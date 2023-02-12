@@ -62,6 +62,7 @@ func SendTypingNotification(t TypingNotification) error {
 				"type":           "typing",
 				"conversationId": t.ConversationId,
 			},
+			Notification:     &fcm.Notification{},
 			ContentAvailable: true,
 		}
 
