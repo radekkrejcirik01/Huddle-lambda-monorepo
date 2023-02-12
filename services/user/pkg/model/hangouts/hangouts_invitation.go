@@ -14,6 +14,7 @@ type HangoutsInvitationTable struct {
 	User      string
 	Username  string
 	Time      string
+	Type      string
 	Confirmed int `gorm:"default:0"`
 	Seen      int `gorm:"default:0"`
 }
@@ -24,6 +25,7 @@ type AcceptInvite struct {
 	User     string
 	Username string
 	Name     string
+	Type     string
 }
 
 func (HangoutsInvitationTable) TableName() string {
@@ -37,12 +39,19 @@ func AcceptHangout(db *gorm.DB, t *AcceptInvite) error {
 	}
 
 	now := time.Now().Format(timeFormat)
+	acceptedType := "accepted_people"
+	if t.Type == hangoutType {
+		acceptedType = "accepted_hangout"
+	}
+	if t.Type == groupHangoutType {
+		acceptedType = "accepted_group_hangout"
+	}
 	acceptedInvitation := notifications.AcceptedInvitations{
 		EventId:  t.Id,
 		User:     t.User,
 		Username: t.Username,
 		Time:     now,
-		Type:     "accepted_hangout",
+		Type:     acceptedType,
 	}
 
 	if rowsAffected := db.Table("accepted_invitations").Create(&acceptedInvitation).RowsAffected; rowsAffected == 0 {
@@ -54,10 +63,14 @@ func AcceptHangout(db *gorm.DB, t *AcceptInvite) error {
 		return nil
 	}
 
+	body := t.Name + " accepted hangout invite!"
+	if t.Type == groupHangoutType {
+		body = t.Name + " accepted group hangout invite!"
+	}
 	acceptHangoutInviteNotification := service.FcmNotification{
 		Sender:  t.User,
-		Type:    "hangout",
-		Body:    t.Name + " accepted hangout invite!",
+		Type:    acceptedType,
+		Body:    body,
 		Sound:   "notification.wav",
 		Devices: *tokens,
 	}

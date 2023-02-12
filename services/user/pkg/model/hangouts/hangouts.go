@@ -10,7 +10,7 @@ import (
 )
 
 const hangoutType = "hangout"
-const groupHangoutType = "group"
+const groupHangoutType = "group_hangout"
 
 const timeFormat = "2006-01-02 15:04:05"
 
@@ -86,6 +86,7 @@ func CreateHangout(db *gorm.DB, t *HangoutInvite) error {
 		Username:  t.Username,
 		Time:      now,
 		Confirmed: 0,
+		Type:      hangoutType,
 	}
 
 	if err := db.Table("hangouts_invitations").Create(&hangoutInvitation).Error; err != nil {
@@ -98,7 +99,7 @@ func CreateHangout(db *gorm.DB, t *HangoutInvite) error {
 	}
 	hangoutNotification := service.FcmNotification{
 		Sender:  t.User,
-		Type:    "hangout",
+		Type:    hangoutType,
 		Title:   t.Name + " sends a hangout!",
 		Sound:   "notification.wav",
 		Devices: *tokens,
@@ -131,6 +132,7 @@ func CreateGroupHangout(db *gorm.DB, t *GroupHangoutInvite) error {
 			Username:  username,
 			Time:      now,
 			Confirmed: 0,
+			Type:      groupHangoutType,
 		})
 	}
 
@@ -151,8 +153,8 @@ func CreateGroupHangout(db *gorm.DB, t *GroupHangoutInvite) error {
 	}
 	groupHangoutNotification := service.FcmNotification{
 		Sender:  t.User,
-		Type:    "hangout",
-		Title:   t.Name + " created group hangout!",
+		Type:    groupHangoutType,
+		Title:   t.Name + " sends a group hangout!",
 		Sound:   "default",
 		Devices: *tokens,
 	}
@@ -220,7 +222,7 @@ func GetHangouts(db *gorm.DB, t *GetHangout) ([]Hangouts, error) {
 		var hangoutsArray []HangoutsTable
 		for _, hangout := range hangouts {
 			if strings.Contains(hangout.Time, title) {
-				if hangout.Type == "hangout" {
+				if hangout.Type == hangoutType {
 					for _, user := range users {
 						if user.Username == hangout.CreatedBy {
 							hangout.Title = user.Firstname
@@ -269,7 +271,7 @@ func GetUsersFromQuery(db *gorm.DB, query string) ([]people.People, error) {
 func getHangoutUsers(hangouts []HangoutsTable) string {
 	var usersnames []string
 	for _, hangout := range hangouts {
-		if hangout.Type == "hangout" {
+		if hangout.Type == hangoutType {
 			usersnames = append(usersnames, `'`+hangout.CreatedBy+`'`)
 		}
 	}

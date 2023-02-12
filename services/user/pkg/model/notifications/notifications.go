@@ -70,7 +70,7 @@ func GetNotifications(db *gorm.DB, t *Notification) ([]NotificationsData, error)
 				user AS username,
 				time,
 				confirmed,
-				'hangout' AS type
+				TYPE
 			FROM
 				hangouts_invitations
 			WHERE
