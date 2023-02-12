@@ -20,7 +20,8 @@ func init() {
 		&messages.Message{},
 		&messages.ConversationsTable{},
 		&messages.PeopleInConversations{},
-		&messages.LastReadMessage{}); err != nil {
+		&messages.LastReadMessage{},
+		&messages.Reacted{}); err != nil {
 		log.Fatal(err)
 	}
 

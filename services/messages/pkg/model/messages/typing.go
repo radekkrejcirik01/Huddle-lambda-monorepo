@@ -11,7 +11,7 @@ import (
 )
 
 type Typing struct {
-	ConversationId string
+	ConversationId uint
 	Username       string
 	Value          int
 }
@@ -19,7 +19,7 @@ type Typing struct {
 type TypingNotification struct {
 	Username       string
 	Value          string
-	ConversationId string
+	ConversationId uint
 	Tokens         []string
 }
 

@@ -134,6 +134,30 @@ func UpdatLastRead(c *fiber.Ctx) error {
 	})
 }
 
+// MessageReacted POST /react/message
+func MessageReacted(c *fiber.Ctx) error {
+	t := &messages.Reacted{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := messages.MessageReacted(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "succes",
+		Message: "Succesfully reacted on the message",
+	})
+}
+
 // SendMessage POST /send/messages
 func SendMessage(c *fiber.Ctx) error {
 	t := &messages.SentMessage{}

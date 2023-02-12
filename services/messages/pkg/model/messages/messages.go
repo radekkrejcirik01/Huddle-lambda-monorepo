@@ -35,15 +35,25 @@ type ConversationId struct {
 	ConversationId uint
 }
 
+type ReactedBy struct {
+	Username string `json:"username"`
+	Reaction string `json:"reaction"`
+}
+
+type ReadBy struct {
+	Username       string `json:"username"`
+	ProfilePicture string `json:"profilePicture"`
+}
 type MessageResponse struct {
-	Id             uint     `gorm:"primary_key;auto_increment;not_null" json:"id"`
-	Sender         string   `json:"sender"`
-	ProfilePicture string   `json:"profilePicture"`
-	ConversationId uint     `json:"conversationId"`
-	Message        string   `json:"message"`
-	Time           string   `json:"time"`
-	ReadBy         []ReadBy `json:"readBy"`
-	Url            string   `json:"url"`
+	Id             uint        `gorm:"primary_key;auto_increment;not_null" json:"id"`
+	Sender         string      `json:"sender"`
+	ProfilePicture string      `json:"profilePicture"`
+	ConversationId uint        `json:"conversationId"`
+	Message        string      `json:"message"`
+	Time           string      `json:"time"`
+	ReadBy         []ReadBy    `json:"readBy"`
+	ReactedBy      []ReactedBy `json:"reactedBy"`
+	Url            string      `json:"url"`
 }
 type SentMessage struct {
 	Sender         string
@@ -64,11 +74,6 @@ type Notification struct {
 	Body           string
 	Devices        []string
 	Type           string
-}
-
-type ReadBy struct {
-	Username       string `json:"username"`
-	ProfilePicture string `json:"profilePicture"`
 }
 
 func GetMessages(db *gorm.DB, t *ConversationId) ([]MessageResponse, error) {
@@ -99,6 +104,11 @@ func GetMessages(db *gorm.DB, t *ConversationId) ([]MessageResponse, error) {
 		return []MessageResponse{}, err
 	}
 
+	var reacted []Reacted
+	if err := db.Table("reacted").Where("conversation_id = ?", t.ConversationId).Find(&reacted).Error; err != nil {
+		return []MessageResponse{}, err
+	}
+
 	var result []MessageResponse
 	for _, message := range messages {
 		for _, user := range users {
@@ -111,6 +121,7 @@ func GetMessages(db *gorm.DB, t *ConversationId) ([]MessageResponse, error) {
 					Message:        message.Message,
 					Time:           message.Time,
 					ReadBy:         getReadByMessageId(lastReads, message, users),
+					ReactedBy:      getReactionsByMessageId(reacted, message, users),
 					Url:            message.Url,
 				})
 			}
@@ -136,6 +147,20 @@ func getReadByMessageId(lastReads []LastReadMessage, message Message, users []Us
 	}
 
 	return readBy
+}
+
+func getReactionsByMessageId(reactions []Reacted, message Message, users []User) []ReactedBy {
+	var reactedBy []ReactedBy
+	for _, reacted := range reactions {
+		if reacted.MessageId == message.Id {
+			reactedBy = append(reactedBy, ReactedBy{
+				Username: reacted.Username,
+				Reaction: reacted.Reaction,
+			})
+		}
+	}
+
+	return reactedBy
 }
 
 // SendMessage send message
