@@ -10,12 +10,17 @@ type HangoutId struct {
 }
 
 type HangoutById struct {
-	CreatedBy string   `json:"createdBy"`
-	Title     string   `json:"title"`
-	Time      string   `json:"time"`
-	Place     string   `json:"place"`
-	Picture   string   `json:"picture"`
-	Usernames []string `json:"usernames"`
+	CreatedBy string      `json:"createdBy"`
+	Title     string      `json:"title"`
+	Time      string      `json:"time"`
+	Place     string      `json:"place"`
+	Picture   string      `json:"picture"`
+	Usernames []Usernames `json:"usernames"`
+}
+
+type Usernames struct {
+	Username  string `json:"username"`
+	Confirmed uint   `json:"confirmed"`
 }
 
 type User struct {
@@ -30,18 +35,18 @@ func GetHangoutById(db *gorm.DB, t *HangoutId) (HangoutById, error) {
 		return HangoutById{}, err
 	}
 
-	var usernames []string
-	if err := db.Table("hangouts_invitations").Select("username").Where("hangout_id = ?", t.Id).Find(&usernames).Error; err != nil {
+	var usernames []Usernames
+	if err := db.Table("hangouts_invitations").Select("username, confirmed").Where("hangout_id = ?", t.Id).Find(&usernames).Error; err != nil {
 		return HangoutById{}, err
 	}
-	usernames = append(usernames, hangout.CreatedBy)
+	usernames = append(usernames, Usernames{Username: hangout.CreatedBy, Confirmed: 1})
 
 	title := hangout.Title
 	picture := hangout.Picture
 	if hangout.Type == hangoutType {
-		username := usernames[0]
+		username := usernames[0].Username
 		if username == t.Username {
-			username = usernames[1]
+			username = usernames[1].Username
 		}
 
 		var user User

@@ -110,9 +110,13 @@ func CreateHangout(db *gorm.DB, t *HangoutInvite) error {
 
 // Create new group hangout in DB
 func CreateGroupHangout(db *gorm.DB, t *GroupHangoutInvite) error {
+	title := "Group hangout"
+	if len(t.Title) > 0 {
+		title = t.Title
+	}
 	hangout := HangoutsTable{
 		CreatedBy: t.User,
-		Title:     t.Title,
+		Title:     title,
 		Time:      t.Time,
 		Place:     t.Place,
 		Picture:   t.Picture,
@@ -131,7 +135,6 @@ func CreateGroupHangout(db *gorm.DB, t *GroupHangoutInvite) error {
 			User:      t.User,
 			Username:  username,
 			Time:      now,
-			Confirmed: 0,
 			Type:      groupHangoutType,
 		})
 	}
@@ -155,7 +158,7 @@ func CreateGroupHangout(db *gorm.DB, t *GroupHangoutInvite) error {
 		Sender:  t.User,
 		Type:    groupHangoutType,
 		Title:   t.Name + " sends a group hangout!",
-		Sound:   "default",
+		Sound:   "notification.wav",
 		Devices: *tokens,
 	}
 

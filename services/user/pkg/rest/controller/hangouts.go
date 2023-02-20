@@ -131,3 +131,27 @@ func AcceptHangoutInvitation(c *fiber.Ctx) error {
 		Message: "Hangout invitation succesfully accepted!",
 	})
 }
+
+// SendHangoutInvitation POST /send/hangout/invitation
+func SendHangoutInvitation(c *fiber.Ctx) error {
+	t := &hangouts.HangoutInvitations{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := hangouts.SendHangoutInvitation(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "succes",
+		Message: "Hangout invitation succesfully sent!",
+	})
+}

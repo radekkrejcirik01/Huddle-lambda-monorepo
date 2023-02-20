@@ -25,6 +25,7 @@ func Create() *fiber.App {
 	app.Post("/get/hangouts", controller.GetHangouts)
 	app.Post("/get/hangout", controller.GetHangout)
 	app.Post("/accept/hangout/invitation", controller.AcceptHangoutInvitation)
+	app.Post("/send/hangout/invitation", controller.SendHangoutInvitation)
 
 	app.Post("/get/notifications", controller.GetNotifications)
 
