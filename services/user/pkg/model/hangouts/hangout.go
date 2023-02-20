@@ -69,3 +69,12 @@ func GetHangoutById(db *gorm.DB, t *HangoutId) (HangoutById, error) {
 
 	return result, nil
 }
+
+// Delete hangout by id from DB
+func DeleteHangoutById(db *gorm.DB, t *HangoutId) error {
+	return db.Exec(`
+		DELETE hangouts, hangouts_invitations, accepted_invitations FROM hangouts
+			LEFT JOIN hangouts_invitations ON hangouts.id = hangouts_invitations.hangout_id
+			LEFT JOIN accepted_invitations ON hangouts.id = accepted_invitations.event_id
+		WHERE hangouts.id = ?`, t.Id).Error
+}
