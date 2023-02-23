@@ -32,10 +32,9 @@ func (User) TableName() string {
 }
 
 type UplaodProfilePictureBody struct {
-	Username  string
-	Key       string
-	Buffer    string
-	IsHangout bool
+	Username string
+	Buffer   string
+	FileName string
 }
 
 // Create new User in DB
@@ -133,7 +132,7 @@ func UplaodProfilePicture(db *gorm.DB, t *UplaodProfilePictureBody) (string, err
 	// Upload the file to S3.
 	result, err := uploader.Upload(&s3manager.UploadInput{
 		Bucket:      aws.String("notify-bucket-images"),
-		Key:         aws.String(t.Key),
+		Key:         aws.String("profile-images/" + t.Username + "/" + t.FileName),
 		Body:        bytes.NewReader(decode),
 		ContentType: aws.String("image/jpeg"),
 	})
@@ -141,10 +140,8 @@ func UplaodProfilePicture(db *gorm.DB, t *UplaodProfilePictureBody) (string, err
 		return "", err
 	}
 
-	if !t.IsHangout {
-		if err := db.Table("users").Where("username = ?", t.Username).Update("profile_picture", result.Location).Error; err != nil {
-			return "", err
-		}
+	if err := db.Table("users").Where("username = ?", t.Username).Update("profile_picture", result.Location).Error; err != nil {
+		return "", err
 	}
 
 	return result.Location, nil

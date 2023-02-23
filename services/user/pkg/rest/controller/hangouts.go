@@ -108,6 +108,30 @@ func GetHangout(c *fiber.Ctx) error {
 	})
 }
 
+// UpdateHangout POST /update/hangout
+func UpdateHangout(c *fiber.Ctx) error {
+	t := &hangouts.UpdateHangout{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := hangouts.UpdateHangoutById(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "succes",
+		Message: "Hangout succesfully updated!",
+	})
+}
+
 // DeleteHangout POST /delete/hangout
 func DeleteHangout(c *fiber.Ctx) error {
 	t := &hangouts.HangoutId{}

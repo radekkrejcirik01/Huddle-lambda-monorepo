@@ -1,9 +1,16 @@
 package hangouts
 
 import (
+	"bytes"
+	"encoding/base64"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/database"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
@@ -39,7 +46,8 @@ type GroupHangoutInvite struct {
 	Usernames []string
 	Time      string
 	Place     string
-	Picture   string
+	Buffer    string
+	FileName  string
 }
 
 type GetHangout struct {
@@ -75,7 +83,7 @@ func CreateHangout(db *gorm.DB, t *HangoutInvite) error {
 		Place:     t.Place,
 		Type:      hangoutType,
 	}
-	if err := db.Create(&hangout).Error; err != nil {
+	if err := db.Table("hangouts").Create(&hangout).Error; err != nil {
 		return err
 	}
 
@@ -114,15 +122,25 @@ func CreateGroupHangout(db *gorm.DB, t *GroupHangoutInvite) error {
 	if len(t.Title) > 0 {
 		title = t.Title
 	}
+
+	var photoUrl string
+	if len(t.Buffer) > 0 {
+		url, err := UplaodPhoto(db, t.User, t.Buffer, t.FileName)
+		if err != nil {
+			return err
+		}
+		photoUrl = url
+	}
+
 	hangout := HangoutsTable{
 		CreatedBy: t.User,
 		Title:     title,
 		Time:      t.Time,
 		Place:     t.Place,
-		Picture:   t.Picture,
+		Picture:   photoUrl,
 		Type:      groupHangoutType,
 	}
-	if err := db.Create(&hangout).Error; err != nil {
+	if err := db.Table("hangouts").Create(&hangout).Error; err != nil {
 		return err
 	}
 
@@ -318,4 +336,35 @@ func reverseHangoutsArray(hangoutsArray []HangoutsTable) []HangoutsTable {
 		hangoutsArray[i], hangoutsArray[j] = hangoutsArray[j], hangoutsArray[i]
 	}
 	return hangoutsArray
+}
+
+func UplaodPhoto(db *gorm.DB, username string, buffer string, fileName string) (string, error) {
+	accessKey, secretAccessKey := database.GetCredentials()
+
+	sess := session.Must(session.NewSession(
+		&aws.Config{
+			Region: aws.String("eu-central-1"),
+			Credentials: credentials.NewStaticCredentials(
+				accessKey,
+				secretAccessKey,
+				"", // a token will be created when the session it's used.
+			),
+		}))
+
+	// Create an uploader with the session and default options
+	uploader := s3manager.NewUploader(sess)
+
+	decode, _ := base64.StdEncoding.DecodeString(buffer)
+	// Upload the file to S3.
+	result, err := uploader.Upload(&s3manager.UploadInput{
+		Bucket:      aws.String("notify-bucket-images"),
+		Key:         aws.String("hangout-images/" + username + "/" + fileName),
+		Body:        bytes.NewReader(decode),
+		ContentType: aws.String("image/jpeg"),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return result.Location, nil
 }
