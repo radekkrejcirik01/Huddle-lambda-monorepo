@@ -19,6 +19,7 @@ func Create() *fiber.App {
 	app.Post("/create/people/invitation", controller.CreatePeopleInvitation)
 	app.Post("/get/people", controller.GetPeople)
 	app.Post("/accept/people/invitation", controller.AcceptPeopleInvitation)
+	app.Post("/check/people/invitations", controller.CheckInvitations)
 
 	app.Post("/create/hangout/group", controller.CreateGroupHangout)
 	app.Post("/create/hangout", controller.CreateHangout)

@@ -40,6 +40,13 @@ type Notification struct {
 	Devices []string
 }
 
+type CheckIfFriend struct {
+	Id        uint   `json:"id"`
+	User      string `json:"user"`
+	Username  string `json:"username"`
+	Confirmed uint   `json:"confirmed"`
+}
+
 func (PeopleInvitationTable) TableName() string {
 	return "people_invitations"
 }
@@ -122,7 +129,7 @@ func GetPeople(db *gorm.DB, t *People) ([]People, error) {
 }
 
 func AcceptInvitation(db *gorm.DB, t *AcceptInvite) error {
-	if err := db.Table("people_invitations").Where("id = ?", t.Id).Update("confirmed", t.Value).Error; err != nil {
+	if err := db.Table("people_invitations").Where("id = ?", t.Id).Updates(map[string]interface{}{"confirmed": t.Value, "seen": 1}).Error; err != nil {
 		return err
 	}
 
@@ -135,7 +142,7 @@ func AcceptInvitation(db *gorm.DB, t *AcceptInvite) error {
 		Type:     "accepted_people",
 	}
 
-	if rowsAffected := db.Table("accepted_invitations").FirstOrCreate(&acceptedInvitation).RowsAffected; rowsAffected == 0 {
+	if rowsAffected := db.Table("accepted_invitations").Where(notifications.AcceptedInvitations{EventId: t.Id}).FirstOrCreate(&acceptedInvitation).RowsAffected; rowsAffected == 0 {
 		return nil
 	}
 
@@ -169,4 +176,14 @@ func GetPeopleFromQuery(db *gorm.DB, query string) ([]People, error) {
 	}
 
 	return people, nil
+}
+
+func CheckInvitations(db *gorm.DB, t *CheckIfFriend) (CheckIfFriend, error) {
+	var record CheckIfFriend
+	err := db.Table("people_invitations").
+		Select("id, user, username, confirmed").
+		Where("(user = ? AND username = ?) OR (user = ? AND username = ?)",
+			t.User, t.Username, t.Username, t.User).
+		First(&record).Error
+	return record, err
 }

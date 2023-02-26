@@ -24,6 +24,12 @@ type PeopleResponse struct {
 	Data    []people.People `json:"data,omitempty"`
 }
 
+type CheckInvitationsResponse struct {
+	Status  string               `json:"status"`
+	Message string               `json:"message,omitempty"`
+	Data    people.CheckIfFriend `json:"data,omitempty"`
+}
+
 type HangoutsResponse struct {
 	Status  string              `json:"status"`
 	Message string              `json:"message,omitempty"`

@@ -80,3 +80,30 @@ func AcceptPeopleInvitation(c *fiber.Ctx) error {
 		Message: "Invitation succesfully accepted!",
 	})
 }
+
+// CheckInvitations POST /check/people/invitations
+func CheckInvitations(c *fiber.Ctx) error {
+	t := &people.CheckIfFriend{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	record, err := people.CheckInvitations(database.DB, t)
+
+	if err != nil {
+		return c.Status(fiber.StatusOK).JSON(Response{
+			Status:  "succes",
+			Message: "No record found",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(CheckInvitationsResponse{
+		Status:  "succes",
+		Message: "Invitations succesfully checked",
+		Data:    record,
+	})
+}
