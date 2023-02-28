@@ -159,6 +159,18 @@ func UpdateHangoutById(db *gorm.DB, t *UpdateHangout) error {
 	return db.Table("hangouts").Where("id = ?", t.Id).Updates(update).Error
 }
 
+// Remove user from hangout in DB
+func RemoveUserFromHangout(db *gorm.DB, t *HangoutId) error {
+	return db.Exec(`
+	DELETE T1,
+	T2 FROM hangouts_invitations T1
+		LEFT JOIN accepted_invitations T2 ON T1.hangout_id = T2.event_id
+		WHERE (T1.hangout_id = ?
+				AND T1.username = ?)
+			OR(T2.event_id = ?
+				AND T2.user = ? AND T2.type = 'accepted_hangout')`, t.Id, t.Username, t.Id, t.Username).Error
+}
+
 // Delete hangout by id from DB
 func DeleteHangoutById(db *gorm.DB, t *HangoutId) error {
 	return db.Exec(`
