@@ -43,7 +43,6 @@ func MessageReacted(db *gorm.DB, t *Reacted) error {
 	}
 	notification := Notification{
 		ConversationId: t.ConversationId,
-		Sender:         t.Username,
 		Body:           t.Username + " reacted with " + t.Reaction,
 		Devices:        *tokens,
 		Type:           "messageReacted",

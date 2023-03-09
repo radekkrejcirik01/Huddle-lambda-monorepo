@@ -43,7 +43,6 @@ func UpdateLastRead(db *gorm.DB, t *LastReadMessage) error {
 	}
 	notification := Notification{
 		ConversationId: t.ConversationId,
-		Sender:         t.Username,
 		Devices:        *tokens,
 		Type:           "conversationRead",
 	}

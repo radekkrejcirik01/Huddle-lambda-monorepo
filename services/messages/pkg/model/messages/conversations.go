@@ -14,9 +14,8 @@ type ConversationsTable struct {
 }
 
 type ConversationCreate struct {
-	Id        uint
-	Name      string
 	Usernames []string
+	Username  string
 }
 
 func (ConversationsTable) TableName() string {
@@ -50,8 +49,25 @@ type Conversation struct {
 	Picture string
 }
 
-type User struct {
+type GetConversation struct {
+	ConversationId uint
 	Username       string
+}
+
+type User struct {
+	Username       string `json:"username"`
+	Firstname      string `json:"firstname"`
+	ProfilePicture string `json:"profilePicture"`
+}
+
+type ConversationDetails struct {
+	Id      uint   `json:"id"`
+	Name    string `json:"name"`
+	Picture string `json:"picture"`
+	Users   []User `json:"users,omitempty"`
+}
+
+type UserInfo struct {
 	Firstname      string
 	ProfilePicture string
 }
@@ -62,7 +78,7 @@ type Delete struct {
 }
 
 // CreateConversation create conversation
-func CreateConversation(db *gorm.DB, t *ConversationCreate) (uint, error) {
+func CreateConversation(db *gorm.DB, t *ConversationCreate) (ConversationDetails, error) {
 	var usernames []string
 	for _, user := range t.Usernames {
 		usernames = append(usernames, `'`+user+`'`)
@@ -73,47 +89,31 @@ func CreateConversation(db *gorm.DB, t *ConversationCreate) (uint, error) {
 
 	var conversationIds []uint
 	if err := db.Table("people_in_conversations").Select("conversation_id").Where(`conversation_id IN( SELECT conversation_id FROM people_in_conversations WHERE username IN(` + usernamesString + `) GROUP BY conversation_id HAVING COUNT(conversation_id) = ` + strconv.Itoa(usernamesCount) + `) GROUP BY conversation_id HAVING COUNT(conversation_id) = ` + strconv.Itoa(usernamesCount)).Find(&conversationIds).Error; err != nil {
-		return 0, err
+		return ConversationDetails{}, err
 	}
 
 	if len(conversationIds) > 0 {
-		return conversationIds[0], nil
+		return GetDetails(db, conversationIds[0], t.Usernames, t.Username)
 	}
 
-	if len(t.Usernames) > 2 {
-		var firstnames []string
-		if err := db.Table("users").Select("firstname").Where(`username IN (` + usernamesString + `)`).Find(&firstnames).Error; err != nil {
-			return 0, err
-		}
-
-		var name string
-		for i, firstname := range firstnames {
-			if i == 0 {
-				name = firstname
-			} else {
-				name += ` + ` + firstname
-			}
-		}
-		t.Name = name
-	}
-
-	if err := db.Table("conversations").Create(t).Error; err != nil {
-		return 0, err
+	var newConversation ConversationsTable
+	if err := db.Table("conversations").Create(&newConversation).Error; err != nil {
+		return ConversationDetails{}, err
 	}
 
 	var peopleInConversations []PeopleInConversations
 	for _, username := range t.Usernames {
 		peopleInConversations = append(peopleInConversations, PeopleInConversations{
-			ConversationId: t.Id,
+			ConversationId: newConversation.Id,
 			Username:       username,
 		})
 	}
 
 	if err := db.Table("people_in_conversations").Create(&peopleInConversations).Error; err != nil {
-		return 0, err
+		return ConversationDetails{}, err
 	}
 
-	return t.Id, nil
+	return GetDetails(db, newConversation.Id, t.Usernames, t.Username) // -1 to not include user
 }
 
 // GetConversationsList get conversations
@@ -193,7 +193,7 @@ func GetConversationsList(db *gorm.DB, t *Username, page string) ([]Conversation
 	}
 
 	var deletedConversations []uint
-	if err := db.Table("people_in_conversations").Select("conversation_id").Where("deleted = ?", 1).Find(&deletedConversations).Error; err != nil {
+	if err := db.Table("people_in_conversations").Select("conversation_id").Where("username = ? AND deleted = ?", t.Username, 1).Find(&deletedConversations).Error; err != nil {
 		return []ConversationList{}, err
 	}
 
@@ -218,6 +218,63 @@ func GetConversationsList(db *gorm.DB, t *Username, page string) ([]Conversation
 	}
 
 	return result, nil
+}
+
+// GetConversationDetails get conversation details from DB
+func GetConversationDetails(db *gorm.DB, t *GetConversation) (ConversationDetails, error) {
+	var peopleInConversation []PeopleInConversations
+	if err := db.Table("people_in_conversations").Where("conversation_id = ?", t.ConversationId).Find(&peopleInConversation).Error; err != nil {
+		return ConversationDetails{}, err
+	}
+
+	var usernames []string
+	for _, user := range peopleInConversation {
+		usernames = append(usernames, user.Username)
+	}
+
+	return GetDetails(db, t.ConversationId, usernames, t.Username)
+}
+
+func GetDetails(db *gorm.DB, conversationId uint, usernames []string, user string) (ConversationDetails, error) {
+	var users []User
+	var conversation Conversation
+	var conversationDetails ConversationDetails
+	if len(usernames) > 2 {
+		if err := db.Table("conversations").Where(`id = ?`, conversationId).First(&conversation).Error; err != nil {
+			return ConversationDetails{}, err
+		}
+
+		var usernamesArray []string
+		for _, value := range usernames {
+			usernamesArray = append(usernamesArray, `'`+value+`'`)
+		}
+		usernamesString := strings.Join(usernamesArray, ", ")
+		if err := db.Table("users").Select("username, firstname, profile_picture").Where(`username IN (` + usernamesString + `)`).Find(&users).Error; err != nil {
+			return ConversationDetails{}, err
+		}
+		conversationDetails = ConversationDetails{
+			Id:      conversationId,
+			Name:    conversation.Name,
+			Picture: conversation.Picture,
+			Users:   users,
+		}
+	} else {
+		username := usernames[0]
+		if username == user {
+			username = usernames[1]
+		}
+		if err := db.Table("users").Select("username, firstname, profile_picture").Where("username = ?", username).First(&users).Error; err != nil {
+			return ConversationDetails{}, err
+		}
+		conversation.Name = users[0].Firstname
+		conversation.Picture = users[0].ProfilePicture
+		conversationDetails = ConversationDetails{
+			Id:      conversationId,
+			Name:    conversation.Name,
+			Picture: conversation.Picture,
+		}
+	}
+	return conversationDetails, nil
 }
 
 // DeleteConversation delete conversation

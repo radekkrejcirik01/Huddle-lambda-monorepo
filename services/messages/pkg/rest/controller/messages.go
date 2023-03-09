@@ -17,7 +17,7 @@ func CreateConversation(c *fiber.Ctx) error {
 		})
 	}
 
-	conversationId, err := messages.CreateConversation(database.DB, t)
+	details, err := messages.CreateConversation(database.DB, t)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
@@ -25,10 +25,10 @@ func CreateConversation(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(ResponseCreateConversation{
-		Status:         "succes",
-		Message:        "Conversation succesfully created",
-		ConversationId: conversationId,
+	return c.Status(fiber.StatusOK).JSON(ResponseConversationDetails{
+		Status:  "succes",
+		Message: "Conversation succesfully created",
+		Data:    details,
 	})
 }
 
@@ -57,6 +57,32 @@ func GetConversations(c *fiber.Ctx) error {
 		Status:  "succes",
 		Message: "Conversation list succesfully get",
 		Data:    conversationList,
+	})
+}
+
+// GetConversationDetails POST /get/conversation/details
+func GetConversationDetails(c *fiber.Ctx) error {
+	t := &messages.GetConversation{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	details, err := messages.GetConversationDetails(database.DB, t)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(ResponseConversationDetails{
+		Status:  "succes",
+		Message: "Conversation details succesfully get!",
+		Data:    details,
 	})
 }
 

@@ -58,7 +58,6 @@ type MessageResponse struct {
 type SentMessage struct {
 	Sender         string
 	Name           string
-	Picture        string
 	ConversationId uint
 	Message        string
 	Time           string
@@ -204,8 +203,6 @@ func SendMessage(db *gorm.DB, t *SentMessage) error {
 		}
 		notification := Notification{
 			ConversationId: t.ConversationId,
-			Sender:         t.Sender,
-			Picture:        t.Picture,
 			Title:          t.Name,
 			Body:           t.Message,
 			Devices:        *tokens,
@@ -276,8 +273,6 @@ func SendNotification(t *Notification) error {
 			Data: map[string]interface{}{
 				"conversationId": t.ConversationId,
 				"type":           t.Type,
-				"sender":         t.Sender,
-				"picture":        t.Picture,
 			},
 			Notification:     fcmNotification,
 			ContentAvailable: contentAvailable,

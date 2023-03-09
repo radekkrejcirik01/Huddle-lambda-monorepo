@@ -13,6 +13,7 @@ func Create() *fiber.App {
 
 	app.Post("/create/conversation", controller.CreateConversation)
 	app.Post("/get/conversations/:page", controller.GetConversations)
+	app.Post("/get/conversation/details", controller.GetConversationDetails)
 	app.Post("/delete/conversation", controller.DeleteConversation)
 
 	app.Post("/get/messages", controller.GetMessages)
