@@ -9,9 +9,10 @@ import (
 )
 
 type ConversationsTable struct {
-	Id      uint `gorm:"primary_key;auto_increment;not_null"`
-	Name    string
-	Picture string
+	Id        uint `gorm:"primary_key;auto_increment;not_null"`
+	Name      string
+	Picture   string
+	CreatedBy string
 }
 
 type ConversationCreate struct {
@@ -45,12 +46,6 @@ type Messages struct {
 	Time           string
 }
 
-type Conversation struct {
-	Id      uint
-	Name    string
-	Picture string
-}
-
 type GetConversation struct {
 	ConversationId uint
 	Username       string
@@ -63,10 +58,11 @@ type User struct {
 }
 
 type ConversationDetails struct {
-	Id      uint   `json:"id"`
-	Name    string `json:"name"`
-	Picture string `json:"picture"`
-	Users   []User `json:"users,omitempty"`
+	Id        uint   `json:"id"`
+	Name      string `json:"name"`
+	Picture   string `json:"picture"`
+	Users     []User `json:"users,omitempty"`
+	CreatedBy string `json:"createdBy"`
 }
 
 type UserInfo struct {
@@ -106,6 +102,7 @@ func CreateConversation(db *gorm.DB, t *ConversationCreate) (ConversationDetails
 	}
 
 	var newConversation ConversationsTable
+	newConversation.CreatedBy = t.Username
 	if err := db.Table("conversations").Create(&newConversation).Error; err != nil {
 		return ConversationDetails{}, err
 	}
@@ -251,7 +248,7 @@ func GetConversationDetails(db *gorm.DB, t *GetConversation) (ConversationDetail
 
 func GetDetails(db *gorm.DB, conversationId uint, usernames []string, user string) (ConversationDetails, error) {
 	var users []User
-	var conversation Conversation
+	var conversation ConversationsTable
 	var conversationDetails ConversationDetails
 	if len(usernames) > 2 {
 		if err := db.Table("conversations").Where(`id = ?`, conversationId).First(&conversation).Error; err != nil {
@@ -267,10 +264,11 @@ func GetDetails(db *gorm.DB, conversationId uint, usernames []string, user strin
 			return ConversationDetails{}, err
 		}
 		conversationDetails = ConversationDetails{
-			Id:      conversationId,
-			Name:    conversation.Name,
-			Picture: conversation.Picture,
-			Users:   users,
+			Id:        conversationId,
+			Name:      conversation.Name,
+			Picture:   conversation.Picture,
+			Users:     users,
+			CreatedBy: conversation.CreatedBy,
 		}
 	} else {
 		username := usernames[0]
@@ -361,7 +359,7 @@ func GetPeopleInConversationsFromQuery(db *gorm.DB, query string) ([]PeopleInCon
 	return peopleInConversations, nil
 }
 
-func GetConversationsFromQuery(db *gorm.DB, query string) ([]Conversation, error) {
+func GetConversationsFromQuery(db *gorm.DB, query string) ([]ConversationsTable, error) {
 	rows, err := db.Raw(query).Rows()
 	if err != nil {
 		return nil, err
@@ -369,7 +367,7 @@ func GetConversationsFromQuery(db *gorm.DB, query string) ([]Conversation, error
 
 	defer rows.Close()
 
-	var conversations []Conversation
+	var conversations []ConversationsTable
 	for rows.Next() {
 		db.ScanRows(rows, &conversations)
 	}
@@ -409,7 +407,7 @@ func getTitleAndPictureByConversationId(
 	conversationId uint,
 	peopleInConversations []PeopleInConversations,
 	users []User,
-	conversations []Conversation,
+	conversations []ConversationsTable,
 	username string,
 ) (string, string) {
 	var people []string
