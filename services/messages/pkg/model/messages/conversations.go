@@ -77,9 +77,13 @@ type UpdateConversation struct {
 	Name     string
 }
 
-type Delete struct {
+type Remove struct {
 	ConversationId uint
 	Username       string
+}
+
+type Delete struct {
+	ConversationId uint
 }
 
 // CreateConversation create conversation
@@ -311,9 +315,20 @@ func UpdateConversationById(db *gorm.DB, t *UpdateConversation) error {
 	return db.Table("conversations").Where("id = ?", t.Id).Updates(update).Error
 }
 
+// RemoveConversation remove conversation
+func RemoveConversation(db *gorm.DB, t *Remove) error {
+	return db.Table("people_in_conversations").Where("conversation_id = ? AND username = ?", t.ConversationId, t.Username).Update("deleted", 1).Error
+}
+
 // DeleteConversation delete conversation
 func DeleteConversation(db *gorm.DB, t *Delete) error {
-	return db.Table("people_in_conversations").Where("conversation_id = ? AND username = ?", t.ConversationId, t.Username).Update("deleted", 1).Error
+	if err := db.Table("people_in_conversations").Where("conversation_id = ?", t.ConversationId).Delete(&PeopleInConversations{}).Error; err != nil {
+		return err
+	}
+	if err := db.Table("messages").Where("conversation_id = ?", t.ConversationId).Delete(&Message{}).Error; err != nil {
+		return err
+	}
+	return db.Table("conversations").Delete(&ConversationsTable{}, t.ConversationId).Error
 }
 
 func getIsRead(lastReads []LastReadMessage, message Messages) uint {
