@@ -1,6 +1,7 @@
 package messages
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 
@@ -182,7 +183,7 @@ func GetConversationsList(db *gorm.DB, t *Username, page string) ([]Conversation
 
 	var users []User
 	if len(usernamesString) > 0 {
-		queryGetUsers := `SELECT username, firstname, profile_picture FROM users WHERE username IN (` + usernamesString + `)`
+		queryGetUsers := `SELECT username, firstname, profile_picture FROM users WHERE username IN (` + usernamesString + `) ORDER BY firstname`
 		usersFromQuery, err := GetUsersFromQuery(db, queryGetUsers)
 		if err != nil {
 			return []ConversationList{}, err
@@ -262,7 +263,7 @@ func GetDetails(db *gorm.DB, conversationId uint, usernames []string, user strin
 			usernamesArray = append(usernamesArray, `'`+value+`'`)
 		}
 		usernamesString := strings.Join(usernamesArray, ", ")
-		if err := db.Table("users").Select("username, firstname, profile_picture").Where(`username IN (` + usernamesString + `)`).Find(&users).Error; err != nil {
+		if err := db.Table("users").Select("username, firstname, profile_picture").Where(`username IN (` + usernamesString + `)`).Find(&users).Order("firstname").Error; err != nil {
 			return ConversationDetails{}, err
 		}
 		conversationDetails = ConversationDetails{
@@ -449,6 +450,9 @@ func getUsersByConversationId(
 			}
 		}
 	}
+	sort.SliceStable(usersInConversation, func(i, j int) bool {
+		return usersInConversation[i].Firstname < usersInConversation[j].Firstname
+	})
 	return usersInConversation
 }
 
