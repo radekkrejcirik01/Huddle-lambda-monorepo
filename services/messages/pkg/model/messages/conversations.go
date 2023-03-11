@@ -320,6 +320,11 @@ func RemoveConversation(db *gorm.DB, t *Remove) error {
 	return db.Table("people_in_conversations").Where("conversation_id = ? AND username = ?", t.ConversationId, t.Username).Update("deleted", 1).Error
 }
 
+// RemoveUserFromConversation remove user from conversation
+func RemoveUserFromConversation(db *gorm.DB, t *Remove) error {
+	return db.Table("people_in_conversations").Where("conversation_id = ? AND username = ?", t.ConversationId, t.Username).Delete(&PeopleInConversations{}).Error
+}
+
 // DeleteConversation delete conversation
 func DeleteConversation(db *gorm.DB, t *Delete) error {
 	if err := db.Table("people_in_conversations").Where("conversation_id = ?", t.ConversationId).Delete(&PeopleInConversations{}).Error; err != nil {

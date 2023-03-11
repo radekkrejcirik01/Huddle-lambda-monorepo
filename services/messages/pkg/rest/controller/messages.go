@@ -134,6 +134,30 @@ func RemoveConversation(c *fiber.Ctx) error {
 	})
 }
 
+// RemoveUserFromConversation POST /remove/conversation/user
+func RemoveUserFromConversation(c *fiber.Ctx) error {
+	t := &messages.Remove{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := messages.RemoveUserFromConversation(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "succes",
+		Message: "User succesfully removed from conversation",
+	})
+}
+
 // DeleteConversation POST /delete/conversation
 func DeleteConversation(c *fiber.Ctx) error {
 	t := &messages.Delete{}

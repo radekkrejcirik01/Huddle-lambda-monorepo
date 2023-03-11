@@ -16,6 +16,7 @@ func Create() *fiber.App {
 	app.Post("/get/conversation/details", controller.GetConversationDetails)
 	app.Post("/update/conversation", controller.UpdateConversation)
 	app.Post("/remove/conversation", controller.RemoveConversation)
+	app.Post("/remove/conversation/user", controller.RemoveUserFromConversation)
 	app.Post("/delete/conversation", controller.DeleteConversation)
 
 	app.Post("/get/messages", controller.GetMessages)
