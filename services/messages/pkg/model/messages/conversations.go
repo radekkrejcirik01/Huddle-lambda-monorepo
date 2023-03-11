@@ -27,12 +27,13 @@ type Username struct {
 }
 
 type ConversationList struct {
-	Id      uint   `json:"id"`
-	Name    string `json:"name"`
-	Picture string `json:"picture"`
-	Message string `json:"message"`
-	Time    string `json:"time"`
-	IsRead  uint   `json:"isRead"`
+	Id        uint   `json:"id"`
+	Usernames []User `json:"usernames"`
+	Name      string `json:"name"`
+	Picture   string `json:"picture"`
+	Message   string `json:"message"`
+	Time      string `json:"time"`
+	IsRead    uint   `json:"isRead"`
 }
 
 type Messages struct {
@@ -70,6 +71,13 @@ type ConversationDetails struct {
 type UserInfo struct {
 	Firstname      string
 	ProfilePicture string
+}
+
+type UpdateConversation struct {
+	Id       uint
+	Buffer   string
+	FileName string
+	Name     string
 }
 
 type Delete struct {
@@ -158,12 +166,7 @@ func GetConversationsList(db *gorm.DB, t *Username, page string) ([]Conversation
 								SELECT
 									conversation_id FROM people_in_conversations
 								WHERE
-									username = '` + t.Username + `')
-							AND username != '` + t.Username + `'
-						GROUP BY
-							conversation_id
-						HAVING
-							COUNT(conversation_id) = 1`
+									username = '` + t.Username + `')`
 	peopleInConversations, err := GetPeopleInConversationsFromQuery(db, queryGetPeopleInConversations)
 	if err != nil {
 		return []ConversationList{}, err
@@ -202,18 +205,28 @@ func GetConversationsList(db *gorm.DB, t *Username, page string) ([]Conversation
 		if contains(deletedConversations, message.ConversationId) {
 			continue
 		}
-		name, picture := getNameByConversationId(
+		name, picture := getTitleAndPictureByConversationId(
 			message.ConversationId,
 			peopleInConversations,
 			users,
-			conversations)
+			conversations,
+			t.Username,
+		)
+
+		usernames := getUsersByConversationId(
+			message.ConversationId,
+			peopleInConversations,
+			users,
+		)
+
 		result = append(result, ConversationList{
-			Id:      message.ConversationId,
-			Name:    name,
-			Picture: picture,
-			Message: message.Message,
-			Time:    message.Time,
-			IsRead:  getIsRead(lastReads, message),
+			Id:        message.ConversationId,
+			Usernames: usernames,
+			Name:      name,
+			Picture:   picture,
+			Message:   message.Message,
+			Time:      message.Time,
+			IsRead:    getIsRead(lastReads, message),
 		})
 	}
 
@@ -275,6 +288,28 @@ func GetDetails(db *gorm.DB, conversationId uint, usernames []string, user strin
 		}
 	}
 	return conversationDetails, nil
+}
+
+// Update hangout in DB
+func UpdateConversationById(db *gorm.DB, t *UpdateConversation) error {
+	update := map[string]interface{}{}
+
+	var photoUrl string
+	if len(t.Buffer) > 0 {
+		url, err := UplaodPhoto(db, strconv.Itoa(int(t.Id)), t.Buffer, t.FileName)
+		if err != nil {
+			return err
+		}
+		photoUrl = url
+	}
+
+	update["name"] = t.Name
+
+	if len(photoUrl) > 0 {
+		update["picture"] = photoUrl
+	}
+
+	return db.Table("conversations").Where("id = ?", t.Id).Updates(update).Error
 }
 
 // DeleteConversation delete conversation
@@ -360,37 +395,74 @@ func GetUsersFromQuery(db *gorm.DB, query string) ([]User, error) {
 func getUsernamesString(peopleInConversations []PeopleInConversations) string {
 	var usernames []string
 	for _, user := range peopleInConversations {
-		usernames = append(usernames, `'`+user.Username+`'`)
+		if !containsString(usernames, `'`+user.Username+`'`) {
+			usernames = append(usernames, `'`+user.Username+`'`)
+		}
 	}
 	usernamesString := strings.Join(usernames, ", ")
 
 	return usernamesString
 }
 
-func getNameByConversationId(
+func getTitleAndPictureByConversationId(
 	conversationId uint,
 	peopleInConversations []PeopleInConversations,
 	users []User,
 	conversations []Conversation,
+	username string,
 ) (string, string) {
+	var people []string
+	for _, person := range peopleInConversations {
+		if person.ConversationId == conversationId {
+			people = append(people, person.Username)
+		}
+	}
+
 	for _, conversation := range conversations {
-		for _, personInConversation := range peopleInConversations {
-			if personInConversation.ConversationId == conversationId {
+		if conversation.Id == conversationId {
+			if len(people) > 2 {
+				return conversation.Name, conversation.Picture
+			} else {
 				for _, user := range users {
-					if user.Username == personInConversation.Username {
+					if user.Username != username {
 						return user.Firstname, user.ProfilePicture
 					}
 				}
 			}
 		}
-		if conversation.Id == conversationId {
-			return conversation.Name, conversation.Picture
-		}
 	}
 	return "", ""
 }
 
+func getUsersByConversationId(
+	conversationId uint,
+	peopleInConversations []PeopleInConversations,
+	users []User,
+) []User {
+	var usersInConversation []User
+	for _, personInConversation := range peopleInConversations {
+		if personInConversation.ConversationId == conversationId {
+			for _, user := range users {
+				if user.Username == personInConversation.Username {
+					usersInConversation = append(usersInConversation, user)
+				}
+			}
+		}
+	}
+	return usersInConversation
+}
+
 func contains(array []uint, value uint) bool {
+	for _, a := range array {
+		if a == value {
+			return true
+		}
+	}
+
+	return false
+}
+
+func containsString(array []string, value string) bool {
 	for _, a := range array {
 		if a == value {
 			return true
