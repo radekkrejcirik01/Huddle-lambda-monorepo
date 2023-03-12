@@ -8,11 +8,14 @@ import (
 	"gorm.io/gorm"
 )
 
+const groupConversationType = "group"
+
 type ConversationsTable struct {
 	Id        uint `gorm:"primary_key;auto_increment;not_null"`
 	Name      string
 	Picture   string
 	CreatedBy string
+	Type      string
 }
 
 type ConversationCreate struct {
@@ -36,6 +39,7 @@ type ConversationList struct {
 	Message   string `json:"message"`
 	Time      string `json:"time"`
 	IsRead    uint   `json:"isRead"`
+	Type      string `json:"type"`
 }
 
 type Messages struct {
@@ -63,6 +67,7 @@ type ConversationDetails struct {
 	Picture   string `json:"picture"`
 	Users     []User `json:"users,omitempty"`
 	CreatedBy string `json:"createdBy"`
+	Type      string `json:"type"`
 }
 
 type UserInfo struct {
@@ -102,11 +107,18 @@ func CreateConversation(db *gorm.DB, t *ConversationCreate) (ConversationDetails
 	}
 
 	if len(conversationIds) > 0 {
-		return GetDetails(db, conversationIds[0], t.Usernames, t.Username)
+		var conversation ConversationsTable
+		if err := db.Table("conversations").Where("id = ?", conversationIds[0]).Find(&conversation).Error; err != nil {
+			return ConversationDetails{}, err
+		}
+		return GetDetails(db, conversationIds[0], conversation, t.Username)
 	}
 
 	var newConversation ConversationsTable
 	newConversation.CreatedBy = t.Username
+	if len(t.Usernames) > 2 {
+		newConversation.Type = groupConversationType
+	}
 	if err := db.Table("conversations").Create(&newConversation).Error; err != nil {
 		return ConversationDetails{}, err
 	}
@@ -123,7 +135,7 @@ func CreateConversation(db *gorm.DB, t *ConversationCreate) (ConversationDetails
 		return ConversationDetails{}, err
 	}
 
-	return GetDetails(db, newConversation.Id, t.Usernames, t.Username) // -1 to not include user
+	return GetDetails(db, newConversation.Id, newConversation, t.Username) // -1 to not include user
 }
 
 // GetConversationsList get conversations
@@ -207,7 +219,7 @@ func GetConversationsList(db *gorm.DB, t *Username, page string) ([]Conversation
 		if contains(deletedConversations, message.ConversationId) {
 			continue
 		}
-		name, picture := getTitleAndPictureByConversationId(
+		name, picture, conversationType := getConversationDetailsById(
 			message.ConversationId,
 			peopleInConversations,
 			users,
@@ -229,6 +241,7 @@ func GetConversationsList(db *gorm.DB, t *Username, page string) ([]Conversation
 			Message:   message.Message,
 			Time:      message.Time,
 			IsRead:    getIsRead(lastReads, message),
+			Type:      conversationType,
 		})
 	}
 
@@ -237,8 +250,17 @@ func GetConversationsList(db *gorm.DB, t *Username, page string) ([]Conversation
 
 // GetConversationDetails get conversation details from DB
 func GetConversationDetails(db *gorm.DB, t *GetConversation) (ConversationDetails, error) {
+	var conversation ConversationsTable
+	if err := db.Table("conversations").Where(`id = ?`, t.ConversationId).First(&conversation).Error; err != nil {
+		return ConversationDetails{}, err
+	}
+
+	return GetDetails(db, t.ConversationId, conversation, t.Username)
+}
+
+func GetDetails(db *gorm.DB, conversationId uint, conversation ConversationsTable, user string) (ConversationDetails, error) {
 	var peopleInConversation []PeopleInConversations
-	if err := db.Table("people_in_conversations").Where("conversation_id = ?", t.ConversationId).Find(&peopleInConversation).Error; err != nil {
+	if err := db.Table("people_in_conversations").Where("conversation_id = ?", conversationId).Find(&peopleInConversation).Error; err != nil {
 		return ConversationDetails{}, err
 	}
 
@@ -247,18 +269,9 @@ func GetConversationDetails(db *gorm.DB, t *GetConversation) (ConversationDetail
 		usernames = append(usernames, user.Username)
 	}
 
-	return GetDetails(db, t.ConversationId, usernames, t.Username)
-}
-
-func GetDetails(db *gorm.DB, conversationId uint, usernames []string, user string) (ConversationDetails, error) {
 	var users []User
-	var conversation ConversationsTable
 	var conversationDetails ConversationDetails
-	if len(usernames) > 2 {
-		if err := db.Table("conversations").Where(`id = ?`, conversationId).First(&conversation).Error; err != nil {
-			return ConversationDetails{}, err
-		}
-
+	if conversation.Type == groupConversationType {
 		var usernamesArray []string
 		for _, value := range usernames {
 			usernamesArray = append(usernamesArray, `'`+value+`'`)
@@ -273,6 +286,7 @@ func GetDetails(db *gorm.DB, conversationId uint, usernames []string, user strin
 			Picture:   conversation.Picture,
 			Users:     users,
 			CreatedBy: conversation.CreatedBy,
+			Type:      conversation.Type,
 		}
 	} else {
 		username := usernames[0]
@@ -288,6 +302,7 @@ func GetDetails(db *gorm.DB, conversationId uint, usernames []string, user strin
 			Id:      conversationId,
 			Name:    conversation.Name,
 			Picture: conversation.Picture,
+			Type:    conversation.Type,
 		}
 	}
 	return conversationDetails, nil
@@ -423,30 +438,23 @@ func getUsernamesString(peopleInConversations []PeopleInConversations) string {
 	return usernamesString
 }
 
-func getTitleAndPictureByConversationId(
+func getConversationDetailsById(
 	conversationId uint,
 	peopleInConversations []PeopleInConversations,
 	users []User,
 	conversations []ConversationsTable,
 	username string,
-) (string, string) {
-	var people []string
-	for _, person := range peopleInConversations {
-		if person.ConversationId == conversationId {
-			people = append(people, person.Username)
-		}
-	}
-
+) (string, string, string) {
 	for _, conversation := range conversations {
 		if conversation.Id == conversationId {
-			if len(people) > 2 {
-				return conversation.Name, conversation.Picture
+			if conversation.Type == groupConversationType {
+				return conversation.Name, conversation.Picture, conversation.Type
 			} else {
-				for _, person := range people {
-					if person != username {
+				for _, person := range peopleInConversations {
+					if person.ConversationId == conversation.Id && person.Username != username {
 						for _, user := range users {
-							if user.Username == person {
-								return user.Firstname, user.ProfilePicture
+							if user.Username == person.Username {
+								return user.Firstname, user.ProfilePicture, conversation.Type
 							}
 						}
 					}
@@ -454,7 +462,7 @@ func getTitleAndPictureByConversationId(
 			}
 		}
 	}
-	return "", ""
+	return "", "", ""
 }
 
 func getUsersByConversationId(
