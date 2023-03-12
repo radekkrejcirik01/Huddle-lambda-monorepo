@@ -47,6 +47,11 @@ type CheckIfFriend struct {
 	Confirmed uint   `json:"confirmed"`
 }
 
+type Remove struct {
+	User     string `json:"user"`
+	Username string `json:"username"`
+}
+
 func (PeopleInvitationTable) TableName() string {
 	return "people_invitations"
 }
@@ -160,6 +165,13 @@ func AcceptInvitation(db *gorm.DB, t *AcceptInvite) error {
 	service.SendNotification(&acceptFriendInviteNotification)
 
 	return nil
+}
+
+func RemoveFriend(db *gorm.DB, t *Remove) error {
+	return db.Table("people_invitations").
+		Where("(user = ? AND username = ?) OR (user = ? AND username = ?)", t.User, t.Username, t.Username, t.User).
+		Update("confirmed", 0).
+		Error
 }
 
 func GetPeopleFromQuery(db *gorm.DB, query string) ([]People, error) {

@@ -107,3 +107,27 @@ func CheckInvitations(c *fiber.Ctx) error {
 		Data:    record,
 	})
 }
+
+// RemoveFriend POST /remove/friend
+func RemoveFriend(c *fiber.Ctx) error {
+	t := &people.Remove{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := people.RemoveFriend(database.DB, t); err != nil {
+		return c.Status(fiber.StatusOK).JSON(Response{
+			Status:  "succes",
+			Message: "No record found",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "succes",
+		Message: "Friend removed",
+	})
+}
