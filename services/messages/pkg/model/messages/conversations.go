@@ -442,9 +442,13 @@ func getTitleAndPictureByConversationId(
 			if len(people) > 2 {
 				return conversation.Name, conversation.Picture
 			} else {
-				for _, user := range users {
-					if user.Username != username {
-						return user.Firstname, user.ProfilePicture
+				for _, person := range people {
+					if person != username {
+						for _, user := range users {
+							if user.Username == person {
+								return user.Firstname, user.ProfilePicture
+							}
+						}
 					}
 				}
 			}
