@@ -86,6 +86,33 @@ func GetConversationDetails(c *fiber.Ctx) error {
 	})
 }
 
+// GetConversationUsernames POST /get/conversation/usernames
+func GetConversationUsernames(c *fiber.Ctx) error {
+	t := &messages.ConversationId{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	users, err := messages.GetConversationUsernames(database.DB, t)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(ResponseGetConversationUsernames{
+		Status:  "succes",
+		Message: "Conversation usernames succesfully got",
+		Data:    users,
+	})
+}
+
 // UpdateConversation POST /update/conversation
 func UpdateConversation(c *fiber.Ctx) error {
 	t := &messages.UpdateConversation{}
@@ -107,6 +134,30 @@ func UpdateConversation(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(Response{
 		Status:  "succes",
 		Message: "Conversation succesfully updated!",
+	})
+}
+
+// AddConversationUsers POST /add/conversation/users
+func AddConversationUsers(c *fiber.Ctx) error {
+	t := &messages.Add{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := messages.AddConversationUsers(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "succes",
+		Message: "User succesfully added to conversation!",
 	})
 }
 

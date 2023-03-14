@@ -87,6 +87,11 @@ type Remove struct {
 	Username       string
 }
 
+type Add struct {
+	ConversationId uint
+	Usernames      []string
+}
+
 type Delete struct {
 	ConversationId uint
 }
@@ -308,7 +313,7 @@ func GetDetails(db *gorm.DB, conversationId uint, conversation ConversationsTabl
 	return conversationDetails, nil
 }
 
-// Update hangout in DB
+// Update conversation by id in DB
 func UpdateConversationById(db *gorm.DB, t *UpdateConversation) error {
 	update := map[string]interface{}{}
 
@@ -328,6 +333,18 @@ func UpdateConversationById(db *gorm.DB, t *UpdateConversation) error {
 	}
 
 	return db.Table("conversations").Where("id = ?", t.Id).Updates(update).Error
+}
+
+// AddConversationUser add user to conversation
+func AddConversationUsers(db *gorm.DB, t *Add) error {
+	var peopleInConversations []PeopleInConversations
+	for _, username := range t.Usernames {
+		peopleInConversations = append(peopleInConversations, PeopleInConversations{
+			ConversationId: t.ConversationId,
+			Username:       username,
+		})
+	}
+	return db.Table("people_in_conversations").Where("conversation_id = ?", t.ConversationId).Create(peopleInConversations).Error
 }
 
 // RemoveConversation remove conversation

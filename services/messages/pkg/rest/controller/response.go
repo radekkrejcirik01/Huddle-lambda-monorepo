@@ -27,6 +27,12 @@ type ResponseConversationDetails struct {
 	Data    messages.ConversationDetails `json:"data,omitempty"`
 }
 
+type ResponseGetConversationUsernames struct {
+	Status  string   `json:"status"`
+	Message string   `json:"message"`
+	Data    []string `json:"data,omitempty"`
+}
+
 type ResponseMessages struct {
 	Status  string                     `json:"status"`
 	Message string                     `json:"message"`
