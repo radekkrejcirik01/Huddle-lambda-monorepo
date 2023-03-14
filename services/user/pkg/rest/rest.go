@@ -30,6 +30,7 @@ func Create() *fiber.App {
 	app.Post("/remove/hangout/user", controller.RemoveUserFromHangout)
 	app.Post("/delete/hangout", controller.DeleteHangout)
 	app.Post("/accept/hangout/invitation", controller.AcceptHangoutInvitation)
+	app.Post("/get/hangout/usernames", controller.GetHangoutUsernames)
 	app.Post("/send/hangout/invitation", controller.SendHangoutInvitation)
 
 	app.Post("/get/notifications", controller.GetNotifications)

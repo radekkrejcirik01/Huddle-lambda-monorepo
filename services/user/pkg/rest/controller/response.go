@@ -53,3 +53,9 @@ type UploadPhotoResponse struct {
 	Message  string `json:"message,omitempty"`
 	ImageUrl string `json:"imageUrl,omitempty"`
 }
+
+type GetHangoutInvitationsResponse struct {
+	Status  string   `json:"status"`
+	Message string   `json:"message,omitempty"`
+	Data    []string `json:"data,omitempty"`
+}

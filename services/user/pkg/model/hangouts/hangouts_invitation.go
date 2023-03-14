@@ -36,6 +36,10 @@ type HangoutInvitations struct {
 	Usernames []string
 }
 
+type Get struct {
+	HangoutId uint
+}
+
 func (HangoutsInvitationTable) TableName() string {
 	return "hangouts_invitations"
 }
@@ -85,6 +89,14 @@ func AcceptHangout(db *gorm.DB, t *AcceptInvite) error {
 	service.SendNotification(&acceptHangoutInviteNotification)
 
 	return nil
+}
+
+// Get hangout usernames from DB
+func GetHangoutUsernames(db *gorm.DB, t *Get) ([]string, error) {
+	var usernames []string
+	err := db.Table("hangouts_invitations").Where("hangout_id = ?", t.HangoutId).Select("username").Find(&usernames).Error
+
+	return usernames, err
 }
 
 // Add hangout invitation in DB

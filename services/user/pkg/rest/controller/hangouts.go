@@ -204,6 +204,32 @@ func AcceptHangoutInvitation(c *fiber.Ctx) error {
 	})
 }
 
+// GetHangoutUsernames POST /get/hangout/usernames
+func GetHangoutUsernames(c *fiber.Ctx) error {
+	t := &hangouts.Get{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	usernames, err := hangouts.GetHangoutUsernames(database.DB, t)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(GetHangoutInvitationsResponse{
+		Status:  "succes",
+		Message: "Hangout invitations succesfully got",
+		Data:    usernames,
+	})
+}
+
 // SendHangoutInvitation POST /send/hangout/invitation
 func SendHangoutInvitation(c *fiber.Ctx) error {
 	t := &hangouts.HangoutInvitations{}
