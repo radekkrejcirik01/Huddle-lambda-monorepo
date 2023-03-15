@@ -86,13 +86,10 @@ func GetHangoutById(db *gorm.DB, t *HangoutId) (HangoutById, error) {
 
 	var users []people.People
 	if hangout.Type == groupHangoutType {
-		query := `SELECT username, firstname, profile_picture FROM users WHERE username IN (` + usernamesString + `)`
-
-		usersFromQuery, err := GetUsersFromQuery(db, query)
-		if err != nil {
+		if err := db.Table("users").Select("username, firstname, profile_picture").Where("username IN (" + usernamesString + ")").Find(&users).Error; err != nil {
 			return HangoutById{}, err
 		}
-		users = usersFromQuery
+
 	}
 
 	usernames := []Usernames{}

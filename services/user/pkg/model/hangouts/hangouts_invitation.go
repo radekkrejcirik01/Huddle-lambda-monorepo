@@ -46,7 +46,7 @@ func (HangoutsInvitationTable) TableName() string {
 
 // Accept hangout invitation in DB
 func AcceptHangout(db *gorm.DB, t *AcceptInvite) error {
-	if err := db.Table("hangouts_invitations").Where("hangout_id = ?", t.Id).Update("confirmed", t.Value).Error; err != nil {
+	if err := db.Table("hangouts_invitations").Where("hangout_id = ? AND username = ?", t.Id, t.User).Update("confirmed", t.Value).Error; err != nil {
 		return err
 	}
 
@@ -66,7 +66,7 @@ func AcceptHangout(db *gorm.DB, t *AcceptInvite) error {
 		Type:     acceptedType,
 	}
 
-	if rowsAffected := db.Table("accepted_invitations").Create(&acceptedInvitation).RowsAffected; rowsAffected == 0 {
+	if rowsAffected := db.Table("accepted_invitations").Where(notifications.AcceptedInvitations{EventId: t.Id, User: t.User}).FirstOrCreate(&acceptedInvitation).RowsAffected; rowsAffected == 0 {
 		return nil
 	}
 
