@@ -1,6 +1,7 @@
 package hangouts
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 
@@ -20,6 +21,7 @@ type HangoutById struct {
 	Place     string      `json:"place"`
 	Picture   string      `json:"picture"`
 	Usernames []Usernames `json:"usernames"`
+	Type      string      `json:"type"`
 }
 
 type UpdateHangout struct {
@@ -85,35 +87,27 @@ func GetHangoutById(db *gorm.DB, t *HangoutId) (HangoutById, error) {
 	usernamesString := strings.Join(usernamesArray, ", ")
 
 	var users []people.People
-	if hangout.Type == groupHangoutType {
-		if err := db.Table("users").Select("username, firstname, profile_picture").Where("username IN (" + usernamesString + ")").Find(&users).Error; err != nil {
-			return HangoutById{}, err
-		}
-
+	if err := db.Table("users").Select("username, firstname, profile_picture").Where("username IN (" + usernamesString + ")").Find(&users).Error; err != nil {
+		return HangoutById{}, err
 	}
 
 	usernames := []Usernames{}
 	for _, hangoutUsername := range hangoutUsernames {
-		if hangout.Type == groupHangoutType {
-			for _, user := range users {
-				if user.Username == hangoutUsername.Username {
-					usernames = append(usernames, Usernames{
-						Username:       hangoutUsername.Username,
-						Name:           user.Firstname,
-						ProfilePicture: user.ProfilePicture,
-						Confirmed:      hangoutUsername.Confirmed,
-					})
-				}
+		for _, user := range users {
+			if user.Username == hangoutUsername.Username {
+				usernames = append(usernames, Usernames{
+					Username:       hangoutUsername.Username,
+					Name:           user.Firstname,
+					ProfilePicture: user.ProfilePicture,
+					Confirmed:      hangoutUsername.Confirmed,
+				})
 			}
-		} else {
-			usernames = append(usernames, Usernames{
-				Username:       hangoutUsername.Username,
-				Name:           "",
-				ProfilePicture: "",
-				Confirmed:      hangoutUsername.Confirmed,
-			})
 		}
 	}
+
+	sort.SliceStable(usernames, func(i, j int) bool {
+		return usernames[i].Name < usernames[j].Name
+	})
 
 	result := HangoutById{
 		CreatedBy: hangout.CreatedBy,
@@ -122,6 +116,7 @@ func GetHangoutById(db *gorm.DB, t *HangoutId) (HangoutById, error) {
 		Place:     hangout.Place,
 		Picture:   picture,
 		Usernames: usernames,
+		Type:      hangout.Type,
 	}
 
 	return result, nil
