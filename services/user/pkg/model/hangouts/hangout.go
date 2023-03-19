@@ -15,13 +15,14 @@ type HangoutId struct {
 }
 
 type HangoutById struct {
-	CreatedBy string      `json:"createdBy"`
-	Title     string      `json:"title"`
-	Time      string      `json:"time"`
-	Place     string      `json:"place"`
-	Picture   string      `json:"picture"`
-	Usernames []Usernames `json:"usernames"`
-	Type      string      `json:"type"`
+	CreatedBy        string      `json:"createdBy"`
+	Title            string      `json:"title"`
+	Time             string      `json:"time"`
+	Place            string      `json:"place"`
+	Picture          string      `json:"picture"`
+	Usernames        []Usernames `json:"usernames"`
+	Type             string      `json:"type"`
+	CreatorConfirmed int         `json:"creatorConfirmed"`
 }
 
 type UpdateHangout struct {
@@ -35,14 +36,14 @@ type UpdateHangout struct {
 
 type HangoutUsernames struct {
 	Username  string
-	Confirmed uint
+	Confirmed int
 }
 
 type Usernames struct {
 	Username       string `json:"username"`
 	Name           string `json:"name"`
 	ProfilePicture string `json:"profilePicture"`
-	Confirmed      uint   `json:"confirmed"`
+	Confirmed      int    `json:"confirmed"`
 }
 
 type User struct {
@@ -61,7 +62,10 @@ func GetHangoutById(db *gorm.DB, t *HangoutId) (HangoutById, error) {
 	if err := db.Table("hangouts_invitations").Select("username, confirmed").Where("hangout_id = ?", t.Id).Find(&hangoutUsernames).Error; err != nil {
 		return HangoutById{}, err
 	}
-	hangoutUsernames = append(hangoutUsernames, HangoutUsernames{Username: hangout.CreatedBy, Confirmed: 1})
+	hangoutUsernames = append(hangoutUsernames, HangoutUsernames{
+		Username:  hangout.CreatedBy,
+		Confirmed: hangout.CreatorConfirmed,
+	})
 
 	title := hangout.Title
 	picture := hangout.Picture
@@ -110,13 +114,14 @@ func GetHangoutById(db *gorm.DB, t *HangoutId) (HangoutById, error) {
 	})
 
 	result := HangoutById{
-		CreatedBy: hangout.CreatedBy,
-		Title:     title,
-		Time:      hangout.Time,
-		Place:     hangout.Place,
-		Picture:   picture,
-		Usernames: usernames,
-		Type:      hangout.Type,
+		CreatedBy:        hangout.CreatedBy,
+		Title:            title,
+		Time:             hangout.Time,
+		Place:            hangout.Place,
+		Picture:          picture,
+		Usernames:        usernames,
+		Type:             hangout.Type,
+		CreatorConfirmed: hangout.CreatorConfirmed,
 	}
 
 	return result, nil

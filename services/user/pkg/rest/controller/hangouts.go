@@ -81,6 +81,33 @@ func GetHangouts(c *fiber.Ctx) error {
 	})
 }
 
+// GetHistoryHangouts POST /get/hangouts/history
+func GetHistoryHangouts(c *fiber.Ctx) error {
+	t := &hangouts.GetHangout{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	hangouts, err := hangouts.GetHistoryHangouts(database.DB, t)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(HangoutsResponse{
+		Status:  "succes",
+		Message: "Hangouts history succesfully got!",
+		Data:    hangouts,
+	})
+}
+
 // GetHangout POST /get/hangout
 func GetHangout(c *fiber.Ctx) error {
 	t := &hangouts.HangoutId{}

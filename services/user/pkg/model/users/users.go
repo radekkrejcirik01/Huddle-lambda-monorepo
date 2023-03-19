@@ -3,6 +3,7 @@ package users
 import (
 	"bytes"
 	"encoding/base64"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -56,10 +57,10 @@ func GetUser(db *gorm.DB, t *User) (UserGet, error) {
 		return UserGet{}, err
 	}
 
+	today := time.Now().Format("2006-01-02")
 	var hangoutsCount int64
 	if err := db.Table("hangouts T1").
-		Joins("JOIN hangouts_invitations T2 ON T1.id = T2.hangout_id").
-		Where("(T1.created_by = ? OR T2.username = ?) AND T2.confirmed = 1", t.Username, t.Username).
+		Joins(`JOIN hangouts_invitations T2 ON ((T1.created_by = ? AND T1.creator_confirmed = 1) OR T2.username = ?) AND T1.id = T2.hangout_id AND T2.confirmed = 1 AND T1.time < ?`, t.Username, t.Username, today).
 		Distinct("T1.id").
 		Count(&hangoutsCount).Error; err != nil {
 		return UserGet{}, err
