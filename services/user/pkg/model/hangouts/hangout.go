@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"gorm.io/gorm"
@@ -17,7 +18,7 @@ type HangoutId struct {
 type HangoutById struct {
 	CreatedBy        string      `json:"createdBy"`
 	Title            string      `json:"title"`
-	Time             string      `json:"time"`
+	Time             time.Time   `json:"time"`
 	Place            string      `json:"place"`
 	Picture          string      `json:"picture"`
 	Usernames        []Usernames `json:"usernames"`

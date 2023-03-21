@@ -18,6 +18,7 @@ type HangoutsInvitationTable struct {
 	Type      string
 	Confirmed int `gorm:"default:0"`
 	Seen      int `gorm:"default:0"`
+	Accepted  int `gorm:"default:0"`
 }
 
 type AcceptInvite struct {
@@ -46,15 +47,8 @@ func (HangoutsInvitationTable) TableName() string {
 
 // Accept hangout invitation in DB
 func AcceptHangout(db *gorm.DB, t *AcceptInvite) error {
-	if err := db.Table("hangouts_invitations").Where("hangout_id = ? AND username = ?", t.Id, t.User).Update("confirmed", t.Value).Error; err != nil {
-		return err
-	}
-
 	now := time.Now().Format(timeFormat)
-	acceptedType := "accepted_people"
-	if t.Type == hangoutType {
-		acceptedType = "accepted_hangout"
-	}
+	acceptedType := "accepted_hangout"
 	if t.Type == groupHangoutType {
 		acceptedType = "accepted_group_hangout"
 	}
@@ -66,7 +60,21 @@ func AcceptHangout(db *gorm.DB, t *AcceptInvite) error {
 		Type:     acceptedType,
 	}
 
-	if rowsAffected := db.Table("accepted_invitations").Where(notifications.AcceptedInvitations{EventId: t.Id, User: t.User}).FirstOrCreate(&acceptedInvitation).RowsAffected; rowsAffected == 0 {
+	alreadyAccepted := false
+	if rowsAffected := db.Table("accepted_invitations").Where(notifications.AcceptedInvitations{EventId: t.Id, User: t.User, Type: acceptedType}).FirstOrCreate(&acceptedInvitation).RowsAffected; rowsAffected == 0 {
+		alreadyAccepted = true
+	}
+
+	update := map[string]interface{}{"confirmed": 1}
+	if !alreadyAccepted {
+		update["accepted"] = 1
+	}
+
+	if err := db.Table("hangouts_invitations").Where("hangout_id = ? AND username = ?", t.Id, t.User).Updates(update).Error; err != nil {
+		return err
+	}
+
+	if alreadyAccepted {
 		return nil
 	}
 

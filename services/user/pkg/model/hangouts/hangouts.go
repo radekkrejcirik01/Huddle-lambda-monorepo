@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/database"
-	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
@@ -23,21 +22,21 @@ const groupHangoutType = "group_hangout"
 const timeFormat = "2006-01-02 15:04:05"
 
 type HangoutsTable struct {
-	Id               uint   `gorm:"primary_key;auto_increment;not_null" json:"id"`
-	CreatedBy        string `json:"createdBy"`
-	Title            string `json:"title"`
-	Time             string `json:"time"`
-	Place            string `json:"place"`
-	Picture          string `json:"picture"`
-	Type             string `json:"type"`
-	CreatorConfirmed int    `gorm:"default:1" json:"creatorConfirmed"`
+	Id               uint      `gorm:"primary_key;auto_increment;not_null" json:"id"`
+	CreatedBy        string    `json:"createdBy"`
+	Title            string    `json:"title"`
+	Time             time.Time `json:"time"`
+	Place            string    `json:"place"`
+	Picture          string    `json:"picture"`
+	Type             string    `json:"type"`
+	CreatorConfirmed int       `gorm:"default:1" json:"creatorConfirmed"`
 }
 
 type HangoutInvite struct {
 	User     string
 	Name     string
 	Username string
-	Time     string
+	Time     time.Time
 	Place    string
 }
 
@@ -46,7 +45,7 @@ type GroupHangoutInvite struct {
 	Name      string
 	Title     string
 	Usernames []string
-	Time      string
+	Time      time.Time
 	Place     string
 	Buffer    string
 	FileName  string
@@ -189,96 +188,55 @@ func CreateGroupHangout(db *gorm.DB, t *GroupHangoutInvite) error {
 func GetHangouts(db *gorm.DB, t *GetHangout) ([]Hangouts, error) {
 	today := time.Now().Format("2006-01-02")
 
-	var hangoutsInvitations []HangoutsInvitationTable
-	if err := db.Table("hangouts_invitations").
-		Where("(user = ? OR username = ?) AND confirmed = 1", t.Username, t.Username).
-		Group("hangout_id").
-		Find(&hangoutsInvitations).Error; err != nil {
-		return nil, err
-	}
-
-	var hangoutIds []uint
-	for _, hangoutInvite := range hangoutsInvitations {
-		if hangoutInvite.Type == hangoutType && hangoutInvite.Username == t.Username {
-			hangoutIds = append(hangoutIds, hangoutInvite.HangoutId)
-		}
-	}
-
-	var hangouts []HangoutsTable
-	if err := db.Table("hangouts").
-		Where("(created_by = ? OR id IN ?) AND time > ?", t.Username, hangoutIds, today).
+	hangouts := []struct {
+		HangoutsTable
+		Username string
+	}{}
+	if err := db.Table("hangouts T1").
+		Select("T1.*, T2.username").
+		Joins("JOIN hangouts_invitations T2 ON T1.id = T2.hangout_id").
+		Where(`((
+			((T1.created_by = ? AND T1.type = 'hangout')
+			OR (T2.username = ? AND ((T1.type = 'hangout' AND T1.creator_confirmed = 1) OR T1.type = 'group_hangout')))
+			AND T2.confirmed = 1)
+			OR (T1.created_by = ? AND T1.type = 'group_hangout' AND T2.accepted = 1))
+			AND T1.time > ?`, t.Username, t.Username, t.Username, today).
 		Group("id").
+		Order("T1.time").
 		Find(&hangouts).Error; err != nil {
 		return nil, err
 	}
 
-	var groupHangoutIds []uint
-	for _, hangout := range hangouts {
-		if hangout.Type == groupHangoutType {
-			groupHangoutIds = append(groupHangoutIds, hangout.Id)
-		}
-	}
-
-	var acceptedInvitations []notifications.AcceptedInvitations
-	if len(groupHangoutIds) > 0 {
-		if err := db.Table("accepted_invitations").
-			Where("event_id IN ? AND (type = 'accepted_group_hangout' OR type = 'accepted_hangout')", groupHangoutIds).
-			Group("event_id").
-			Find(&acceptedInvitations).Error; err != nil {
-			return nil, err
-		}
-	}
-
 	var resultHangouts []HangoutsTable
-out:
 	for _, hangout := range hangouts {
-		// When user created group hangout and one or more users accepted
-		if hangout.Type == groupHangoutType && hangout.CreatedBy == t.Username {
-			for _, acceptedInvite := range acceptedInvitations {
-				if acceptedInvite.EventId == hangout.Id {
-					resultHangouts = append(resultHangouts, hangout)
-					continue out
-				}
-			}
-		}
+		resultHangouts = append(resultHangouts, HangoutsTable{
+			Id:               hangout.Id,
+			CreatedBy:        hangout.CreatedBy,
+			Title:            hangout.Title,
+			Time:             hangout.Time,
+			Place:            hangout.Place,
+			Picture:          hangout.Picture,
+			Type:             hangout.Type,
+			CreatorConfirmed: hangout.CreatorConfirmed,
+		})
+	}
 
-		// When user created hangout and other side accepted
-		if hangout.CreatedBy == t.Username && hangout.CreatorConfirmed == 1 {
-			for _, hangoutInvite := range hangoutsInvitations {
-				if hangout.Id == hangoutInvite.HangoutId {
-					resultHangouts = append(resultHangouts, hangout)
-					continue out
-				}
-			}
-		}
-
-		// When user confirmed and it is group hangout
-		for _, hangoutInvite := range hangoutsInvitations {
-			if hangout.Id == hangoutInvite.HangoutId && hangoutInvite.Username == t.Username && hangout.Type == groupHangoutType {
-				resultHangouts = append(resultHangouts, hangout)
-				continue out
-			}
-		}
-
-		// When user and creator both confirmed
-		for _, hangoutInvite := range hangoutsInvitations {
-			if hangout.Id == hangoutInvite.HangoutId && hangoutInvite.Username == t.Username && hangout.CreatorConfirmed == 1 {
-				resultHangouts = append(resultHangouts, hangout)
-				continue out
+	var hangoutsUsernames []string
+	for _, hangout := range hangouts {
+		if hangout.Type == hangoutType {
+			if hangout.CreatedBy == t.Username {
+				hangoutsUsernames = append(hangoutsUsernames, hangout.Username)
+			} else {
+				hangoutsUsernames = append(hangoutsUsernames, hangout.CreatedBy)
 			}
 		}
 	}
-
-	hangoutsUsersString := getHangoutUsers(resultHangouts, t.Username)
 
 	var users []people.People
-	if len(hangoutsUsersString) > 0 {
-		query := `SELECT username, firstname, profile_picture FROM users WHERE username IN (` + hangoutsUsersString + `)`
-		usersFromQuery, err := GetUsersFromQuery(db, query)
-		if err != nil {
+	if len(hangoutsUsernames) > 0 {
+		if err := db.Table("users").Select("username, firstname, profile_picture").Where("username IN ?", hangoutsUsernames).Find(&users).Error; err != nil {
 			return nil, err
 		}
-		users = usersFromQuery
 	}
 
 	titles := GetTitles(resultHangouts)
@@ -286,17 +244,27 @@ out:
 	var data []Hangouts
 	for _, title := range titles {
 		var hangoutsArray []HangoutsTable
-		for _, hangout := range resultHangouts {
-			if strings.Contains(hangout.Time, title) {
-				if hangout.Type == hangoutType {
+		for _, resultHangout := range resultHangouts {
+			if strings.Contains(resultHangout.Time.String(), title) {
+				if resultHangout.Type == hangoutType {
+					username := resultHangout.CreatedBy
+					if resultHangout.CreatedBy == t.Username {
+						for _, hangout := range hangouts {
+							if hangout.Id == resultHangout.Id {
+								username = hangout.Username
+								break
+							}
+						}
+					}
 					for _, user := range users {
-						if user.Username != t.Username {
-							hangout.Title = user.Firstname
-							hangout.Picture = user.ProfilePicture
+						if user.Username == username {
+							resultHangout.Title = user.Firstname
+							resultHangout.Picture = user.ProfilePicture
+							break
 						}
 					}
 				}
-				hangoutsArray = append(hangoutsArray, hangout)
+				hangoutsArray = append(hangoutsArray, resultHangout)
 			}
 		}
 
@@ -318,9 +286,12 @@ out:
 func GetHistoryHangouts(db *gorm.DB, t *GetHangout) ([]Hangouts, error) {
 	today := time.Now().Format("2006-01-02")
 
-	var hangouts []HangoutsTable
+	hangouts := []struct {
+		HangoutsTable
+		Username string
+	}{}
 	if err := db.Table("hangouts T1").
-		Select("T1.*").
+		Select("T1.*, T2.username").
 		Joins(`JOIN hangouts_invitations T2 ON ((T1.created_by = ? AND T1.creator_confirmed = 1) OR T2.username = ?) AND T1.id = T2.hangout_id AND T2.confirmed = 1 AND T1.time < ?`, t.Username, t.Username, today).
 		Group("T1.id").
 		Order("T1.time DESC").
@@ -328,34 +299,64 @@ func GetHistoryHangouts(db *gorm.DB, t *GetHangout) ([]Hangouts, error) {
 		return nil, err
 	}
 
-	hangoutsUsersString := getHangoutUsers(hangouts, t.Username)
-
-	var users []people.People
-	if len(hangoutsUsersString) > 0 {
-		query := `SELECT username, firstname, profile_picture FROM users WHERE username IN (` + hangoutsUsersString + `)`
-		usersFromQuery, err := GetUsersFromQuery(db, query)
-		if err != nil {
-			return nil, err
-		}
-		users = usersFromQuery
+	var resultHangouts []HangoutsTable
+	for _, hangout := range hangouts {
+		resultHangouts = append(resultHangouts, HangoutsTable{
+			Id:               hangout.Id,
+			CreatedBy:        hangout.CreatedBy,
+			Title:            hangout.Title,
+			Time:             hangout.Time,
+			Place:            hangout.Place,
+			Picture:          hangout.Picture,
+			Type:             hangout.Type,
+			CreatorConfirmed: hangout.CreatorConfirmed,
+		})
 	}
 
-	titles := GetTitles(hangouts)
+	var hangoutsUsernames []string
+	for _, hangout := range hangouts {
+		if hangout.Type == hangoutType {
+			if hangout.CreatedBy == t.Username {
+				hangoutsUsernames = append(hangoutsUsernames, hangout.Username)
+			} else {
+				hangoutsUsernames = append(hangoutsUsernames, hangout.CreatedBy)
+			}
+		}
+	}
+
+	var users []people.People
+	if len(hangoutsUsernames) > 0 {
+		if err := db.Table("users").Select("username, firstname, profile_picture").Where("username IN ?", hangoutsUsernames).Find(&users).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	titles := GetTitles(resultHangouts)
 
 	var data []Hangouts
 	for _, title := range titles {
 		var hangoutsArray []HangoutsTable
-		for _, hangout := range hangouts {
-			if strings.Contains(hangout.Time, title) {
-				if hangout.Type == hangoutType {
+		for _, resultHangout := range resultHangouts {
+			if strings.Contains(resultHangout.Time.String(), title) {
+				if resultHangout.Type == hangoutType {
+					username := resultHangout.CreatedBy
+					if resultHangout.CreatedBy == t.Username {
+						for _, hangout := range hangouts {
+							if hangout.Id == resultHangout.Id {
+								username = hangout.Username
+								break
+							}
+						}
+					}
 					for _, user := range users {
-						if user.Username != t.Username {
-							hangout.Title = user.Firstname
-							hangout.Picture = user.ProfilePicture
+						if user.Username == username {
+							resultHangout.Title = user.Firstname
+							resultHangout.Picture = user.ProfilePicture
+							break
 						}
 					}
 				}
-				hangoutsArray = append(hangoutsArray, hangout)
+				hangoutsArray = append(hangoutsArray, resultHangout)
 			}
 		}
 
@@ -391,17 +392,6 @@ func GetUsersFromQuery(db *gorm.DB, query string) ([]people.People, error) {
 	return users, nil
 }
 
-func getHangoutUsers(hangouts []HangoutsTable, username string) string {
-	var usersnames []string
-	for _, hangout := range hangouts {
-		if hangout.CreatedBy != username && hangout.Type == hangoutType {
-			usersnames = append(usersnames, `'`+hangout.CreatedBy+`'`)
-		}
-	}
-
-	return strings.Join(usersnames, ", ")
-}
-
 func GetHangoutsFromQuery(db *gorm.DB, query string) ([]HangoutsTable, error) {
 	rows, err := db.Raw(query).Rows()
 	if err != nil {
@@ -422,7 +412,7 @@ func GetTitles(hangouts []HangoutsTable) []string {
 	var titles []string
 	lastDate := ""
 	for _, hangout := range hangouts {
-		string := strings.Fields(hangout.Time)
+		string := strings.Fields(hangout.Time.String())
 		date := string[0]
 		if date != lastDate {
 			lastDate = date
