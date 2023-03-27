@@ -42,7 +42,7 @@ type HangoutUsernames struct {
 
 type Usernames struct {
 	Username       string `json:"username"`
-	Name           string `json:"name"`
+	Firstname      string `json:"firstname"`
 	ProfilePicture string `json:"profilePicture"`
 	Confirmed      int    `json:"confirmed"`
 }
@@ -102,7 +102,7 @@ func GetHangoutById(db *gorm.DB, t *HangoutId) (HangoutById, error) {
 			if user.Username == hangoutUsername.Username {
 				usernames = append(usernames, Usernames{
 					Username:       hangoutUsername.Username,
-					Name:           user.Firstname,
+					Firstname:      user.Firstname,
 					ProfilePicture: user.ProfilePicture,
 					Confirmed:      hangoutUsername.Confirmed,
 				})
@@ -111,7 +111,7 @@ func GetHangoutById(db *gorm.DB, t *HangoutId) (HangoutById, error) {
 	}
 
 	sort.SliceStable(usernames, func(i, j int) bool {
-		return usernames[i].Name < usernames[j].Name
+		return usernames[i].Firstname < usernames[j].Firstname
 	})
 
 	result := HangoutById{
@@ -157,6 +157,17 @@ func UpdateHangoutById(db *gorm.DB, t *UpdateHangout) error {
 	return db.Table("hangouts").Where("id = ?", t.Id).Updates(update).Error
 }
 
+// Cancel participation from hangout in DB
+func CancelParticipationFromHangout(db *gorm.DB, t *HangoutId) error {
+	if rows := db.Table("hangouts").Where("id = ? AND created_by = ?", t.Id, t.Username).Update("creator_confirmed", 0); rows.Error != nil {
+		return rows.Error
+	} else if rows.RowsAffected == 1 {
+		return nil
+	}
+
+	return db.Table("hangouts_invitations").Where("hangout_id = ? AND username = ?", t.Id, t.Username).Update("confirmed", 0).Error
+}
+
 // Remove user from hangout in DB
 func RemoveUserFromHangout(db *gorm.DB, t *HangoutId) error {
 	return db.Exec(`
@@ -166,7 +177,7 @@ func RemoveUserFromHangout(db *gorm.DB, t *HangoutId) error {
 		WHERE (T1.hangout_id = ?
 				AND T1.username = ?)
 			OR(T2.event_id = ?
-				AND T2.user = ? AND T2.type = 'accepted_hangout')`, t.Id, t.Username, t.Id, t.Username).Error
+				AND T2.user = ? AND (T2.type = 'accepted_hangout' OR T2.type = 'accepted_group_hangout'))`, t.Id, t.Username, t.Id, t.Username).Error
 }
 
 // Delete hangout by id from DB

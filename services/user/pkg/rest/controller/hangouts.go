@@ -159,6 +159,30 @@ func UpdateHangout(c *fiber.Ctx) error {
 	})
 }
 
+// CancelParticipationFromHangout POST /cancel/hangout/participation
+func CancelParticipationFromHangout(c *fiber.Ctx) error {
+	t := &hangouts.HangoutId{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := hangouts.CancelParticipationFromHangout(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "succes",
+		Message: "User participation canceled",
+	})
+}
+
 // RemoveUserFromHangout POST /remove/hangout/user
 func RemoveUserFromHangout(c *fiber.Ctx) error {
 	t := &hangouts.HangoutId{}
