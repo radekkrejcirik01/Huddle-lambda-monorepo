@@ -1,6 +1,6 @@
 ## Deployment of Golang app to AWS's Lambda
 
-1. export AWS_PROFILE=admin
+1. export AWS_PROFILE=default
 2. GOARCH=amd64 GOOS=linux go build main.go
 3. zip -r user.zip .
 
