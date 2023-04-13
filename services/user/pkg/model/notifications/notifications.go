@@ -1,10 +1,32 @@
 package notifications
 
 import (
-	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
+
+const timeFormat = "2006-01-02 15:04:05"
+
+// Type can be:
+// friend_invite
+// friend_accepted
+// hangout_notify
+// huddle_interacted
+// huddle_confirmed
+type Notifications struct {
+	Id        uint `gorm:"primary_key;auto_increment;not_null"`
+	Sender    string
+	Receiver  string
+	Type      string `gorm:"type:enum('friend_invite', 'friend_accepted', 'hangout_notify', 'huddle_interacted', 'huddle_confirmed')"`
+	Confirmed *int
+	Seen      int   `gorm:"default:0"`
+	Created   int64 `gorm:"autoCreateTime"`
+}
+
+func (Notifications) TableName() string {
+	return "notifications"
+}
 
 type AcceptedInvitations struct {
 	Id       uint `gorm:"primary_key;auto_increment;not_null"`
@@ -16,25 +38,13 @@ type AcceptedInvitations struct {
 	Seen     int `gorm:"default:0"`
 }
 
-func (AcceptedInvitations) TableName() string {
-	return "accepted_invitations"
-}
-
-type Notification struct {
-	Id        uint
-	Username  string
-	Time      string
-	Confirmed int
-	Type      string
-}
-
-type NotificationsData struct {
+type Data struct {
 	Id             uint   `json:"id"`
-	Username       string `json:"username"`
-	Name           string `json:"name"`
-	Time           string `json:"time"`
+	Sender         string `json:"sender"`
+	SenderName     string `json:"senderName"`
+	Created        string `json:"created"`
 	ProfilePicture string `json:"profilePicture"`
-	Confirmed      int    `json:"confirmed"`
+	Confirmed      *int   `json:"confirmed,omitempty"`
 	Type           string `json:"type"`
 }
 
@@ -45,81 +55,44 @@ type Profile struct {
 }
 
 // Get notifications from DB
-func GetNotifications(db *gorm.DB, t *Notification) ([]NotificationsData, error) {
-	db.Transaction(func(tx *gorm.DB) error {
-		tx.Table("people_invitations").Where("username = ?", t.Username).Update("seen", 1)
-		tx.Table("hangouts_invitations").Where("username = ?", t.Username).Update("seen", 1)
-		tx.Table("accepted_invitations").Where("username = ?", t.Username).Update("seen", 1)
-		return nil
-	})
+func GetNotifications(db *gorm.DB, username string) ([]Data, error) {
+	if err := db.Table("notifications").Where("receiver = ?", username).Update("seen", 1).Error; err != nil {
+		return []Data{}, err
+	}
 
-	query := `
-				SELECT
-				id,
-				user AS username,
-				time,
-				confirmed,
-				'people' AS type
-			FROM
-				people_invitations
-			WHERE
-				username = '` + t.Username + `'
-			UNION ALL
-			SELECT
-				hangout_id,
-				user AS username,
-				time,
-				confirmed,
-				TYPE
-			FROM
-				hangouts_invitations
-			WHERE
-				username = '` + t.Username + `'
-			UNION ALL
-			SELECT
-				event_id,
-				USER AS username,
-				time,
-				1 AS confirmed,
-				TYPE
-			FROM
-				accepted_invitations
-			WHERE
-				username = '` + t.Username + `'
-			ORDER BY
-				time DESC`
-
-	notifications, err := GetNotificationsFromQuery(db, query)
-	if err != nil {
-		return []NotificationsData{}, err
+	var notifications []Notifications
+	if err := db.Table("notifications").Where("receiver = ?", username).Find(&notifications).Error; err != nil {
+		return []Data{}, err
 	}
 
 	usernames := getUsernames(notifications)
 
-	queryProfiles := `SELECT firstname, username, profile_picture FROM users WHERE username IN (` + usernames + `)`
-	profiles, err := GetProfilePicturesFromQuery(db, queryProfiles)
-	if err != nil {
-		return []NotificationsData{}, err
+	var profiles []Profile
+	if err := db.Table("users").Select("username, firstname, profile_picture").Where("username IN ?", usernames).Find(&profiles).Error; err != nil {
+		return []Data{}, err
 	}
 
-	var result []NotificationsData
+	var data []Data
 	for _, notification := range notifications {
 		for _, profile := range profiles {
-			if notification.Username == profile.Username {
-				result = append(result, NotificationsData{
-					Id:             notification.Id,
-					Username:       notification.Username,
-					Name:           profile.Firstname,
+			if profile.Username == notification.Sender {
+				time := time.Unix(notification.Created, 0).Format(timeFormat)
+
+				data = append(data, Data{
+					Sender:         notification.Sender,
+					SenderName:     profile.Firstname,
 					ProfilePicture: profile.ProfilePicture,
-					Time:           notification.Time,
+					Created:        time,
 					Confirmed:      notification.Confirmed,
 					Type:           notification.Type,
 				})
+
+				break
 			}
 		}
 	}
 
-	return result, nil
+	return data, nil
 }
 
 func GetProfilePicturesFromQuery(db *gorm.DB, query string) ([]Profile, error) {
@@ -138,27 +111,11 @@ func GetProfilePicturesFromQuery(db *gorm.DB, query string) ([]Profile, error) {
 	return profilePictures, nil
 }
 
-func getUsernames(notifications []Notification) string {
+func getUsernames(notifications []Notifications) []string {
 	var usersnames []string
 	for _, notification := range notifications {
-		usersnames = append(usersnames, `'`+notification.Username+`'`)
+		usersnames = append(usersnames, notification.Sender)
 	}
 
-	return strings.Join(usersnames, ", ")
-}
-
-func GetNotificationsFromQuery(db *gorm.DB, query string) ([]Notification, error) {
-	rows, err := db.Raw(query).Rows()
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	var notifications []Notification
-	for rows.Next() {
-		db.ScanRows(rows, &notifications)
-	}
-
-	return notifications, nil
+	return usersnames
 }

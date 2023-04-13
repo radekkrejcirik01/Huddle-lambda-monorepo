@@ -8,16 +8,9 @@ import (
 
 // GetNotifications POST /get/notifications
 func GetNotifications(c *fiber.Ctx) error {
-	t := &notifications.Notification{}
+	username := c.Params("username")
 
-	if err := c.BodyParser(t); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	notifications, err := notifications.GetNotifications(database.DB, t)
+	notifications, err := notifications.GetNotifications(database.DB, username)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",

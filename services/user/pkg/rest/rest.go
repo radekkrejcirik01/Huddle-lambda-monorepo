@@ -10,6 +10,7 @@ func Create() *fiber.App {
 	app := fiber.New()
 
 	app.Get("/", controller.Index)
+	app.Get("/notifications/:username", controller.GetNotifications)
 
 	app.Post("/create", controller.CreateUser)
 	app.Post("/get", controller.GetUser)
@@ -22,20 +23,7 @@ func Create() *fiber.App {
 	app.Post("/check/people/invitations", controller.CheckInvitations)
 	app.Post("/remove/friend", controller.RemoveFriend)
 
-	app.Post("/create/hangout/group", controller.CreateGroupHangout)
-	app.Post("/create/hangout", controller.CreateHangout)
-	app.Post("/get/hangouts", controller.GetHangouts)
-	app.Post("/get/hangouts/history", controller.GetHistoryHangouts)
-	app.Post("/get/hangout", controller.GetHangout)
-	app.Post("/update/hangout", controller.UpdateHangout)
-	app.Post("/cancel/hangout/participation", controller.CancelParticipationFromHangout)
-	app.Post("/remove/hangout/user", controller.RemoveUserFromHangout)
-	app.Post("/delete/hangout", controller.DeleteHangout)
-	app.Post("/accept/hangout/invitation", controller.AcceptHangoutInvitation)
-	app.Post("/get/hangout/usernames", controller.GetHangoutUsernames)
-	app.Post("/send/hangout/invitation", controller.SendHangoutInvitation)
-
-	app.Post("/get/notifications", controller.GetNotifications)
+	app.Post("/notify", controller.Notify)
 
 	return app
 }
