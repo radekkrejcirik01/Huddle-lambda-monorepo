@@ -22,7 +22,7 @@ type User struct {
 type UserGet struct {
 	User           User  `json:"user"`
 	People         int64 `json:"people"`
-	Hangouts       int64 `json:"hangouts"`
+	Huddles        int64 `json:"huddles"`
 	Notifications  int64 `json:"notifications"`
 	UnreadMessages int64 `json:"unreadMessages"`
 }
@@ -37,72 +37,76 @@ type UplaodProfilePictureBody struct {
 	FileName string
 }
 
-// Create new User in DB
+// Create new user in users table
 func CreateUser(db *gorm.DB, t *User) error {
 	return db.Create(t).Error
 }
 
-// Get User from DB
-func GetUser(db *gorm.DB, t *User) (UserGet, error) {
-	err := db.Where("username = ?", t.Username).First(&t).Error
+// Get user from users table
+func GetUser(db *gorm.DB, username string) (UserGet, error) {
+	var userGet UserGet
+
+	var user User
+	err := db.Table("users").Where("username = ?", username).First(&user).Error
 	if err != nil {
-		return UserGet{}, err
+		return userGet, err
 	}
 
 	var peopleCount int64
-	if err := db.Table("people_invitations").
-		Where("(username = ? AND confirmed = 1) OR (user = ? AND confirmed = 1)", t.Username, t.Username).
+	if err := db.
+		Table("notifications_people").
+		Where("(sender = ? OR receiver = ?) AND type = 'person_invite' AND accepted = 1", username, username).
 		Count(&peopleCount).Error; err != nil {
-		return UserGet{}, err
+		return userGet, err
 	}
 
-	var hangoutsCount int64 = 64
+	var huddlesCount int64 = 64
 
 	var notificationsCount int64
-	query := `
-				SELECT
-					COUNT(*)
-				FROM (
-					SELECT
-					id
-					FROM
-						people_invitations 
-					WHERE
-						username = '` + t.Username + `' AND seen = 0
-					UNION ALL
-					SELECT
-						id
-					FROM
-						hangouts_invitations
-					WHERE
-						receiver = '` + t.Username + `' AND seen = 0
-					UNION ALL
-					SELECT
-						id
-					FROM
-						accepted_invitations
-					WHERE
-						username = '` + t.Username + `'
-						AND seen = 0) T1`
-	if err := db.Raw(query).Count(&notificationsCount).Error; err != nil {
-		return UserGet{}, err
+	notificationsCountQuery :=
+		`
+			SELECT COUNT(*) FROM (SELECT
+							id
+						FROM
+							notifications_people 
+						WHERE
+							receiver = ? AND seen = 0
+						UNION ALL
+						SELECT
+							id
+						FROM
+							notifications_notify
+						WHERE
+							receiver = ? AND seen = 0
+						UNION ALL
+						SELECT
+							id
+						FROM
+							notifications_huddles
+						WHERE
+							receiver = ? AND seen = 0) T
+		`
+	if err := db.
+		Raw(notificationsCountQuery, username, username, username).
+		First(&notificationsCount).Error; err != nil {
+		return userGet, err
 	}
 
 	var unreadMessagesCount int64
-	queryUnreadMessageCount := `SELECT COUNT(*) FROM (SELECT id AS message_id FROM messages WHERE id IN( SELECT MAX(id) FROM messages WHERE conversation_id IN( SELECT conversation_id FROM people_in_conversations WHERE username = '` + t.Username + `') GROUP BY conversation_id)) T1 WHERE T1.message_id NOT IN( SELECT message_id FROM last_read_messages WHERE username = '` + t.Username + `') GROUP BY message_id`
+	queryUnreadMessageCount := `SELECT COUNT(*) FROM (SELECT id AS message_id FROM messages WHERE id IN( SELECT MAX(id) FROM messages WHERE conversation_id IN( SELECT conversation_id FROM people_in_conversations WHERE username = '` + username + `') GROUP BY conversation_id)) T1 WHERE T1.message_id NOT IN( SELECT message_id FROM last_read_messages WHERE username = '` + username + `') GROUP BY message_id`
 	if err := db.Raw(queryUnreadMessageCount).Scan(&unreadMessagesCount).Error; err != nil {
-		return UserGet{}, err
+		return userGet, err
 	}
 
-	result := UserGet{
-		User:           *t,
+	userGet = UserGet{
+		User:           user,
 		People:         peopleCount,
-		Hangouts:       hangoutsCount,
+		Huddles:        huddlesCount,
 		Notifications:  notificationsCount,
 		UnreadMessages: unreadMessagesCount,
 	}
 
-	return result, nil
+	return userGet, nil
 }
 
 func UplaodProfilePicture(db *gorm.DB, t *UplaodProfilePictureBody) (string, error) {

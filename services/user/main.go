@@ -8,7 +8,8 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	fiberadapter "github.com/awslabs/aws-lambda-go-api-proxy/fiber"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/database"
-	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/huddles"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notify"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/users"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/rest"
@@ -19,10 +20,12 @@ var fiberLambda *fiberadapter.FiberLambda
 func init() {
 	database.Connect()
 	if err := database.DB.AutoMigrate(
+		&huddles.HuddleInteracted{},
+		&huddles.Huddle{},
+		&huddles.HuddleNotification{},
+		&notify.NotifyNotification{},
+		&people.PeopleNotification{},
 		&users.User{},
-		&people.PeopleInvitationTable{},
-		&notifications.Notifications{},
-		&notifications.AcceptedInvitations{},
 	); err != nil {
 		log.Fatal(err)
 	}

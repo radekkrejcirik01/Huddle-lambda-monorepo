@@ -6,9 +6,9 @@ import (
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 )
 
-// CreatePeopleInvitation POST /create/people/invitation
-func CreatePeopleInvitation(c *fiber.Ctx) error {
-	t := &people.PeopleInvitationTable{}
+// AddPersonInvite POST /person
+func AddPersonInvite(c *fiber.Ctx) error {
+	t := &people.PeopleNotification{}
 
 	if err := c.BodyParser(t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -17,7 +17,7 @@ func CreatePeopleInvitation(c *fiber.Ctx) error {
 		})
 	}
 
-	message, err := people.CreatePeopleInvitation(database.DB, t)
+	message, err := people.AddPersonInvite(database.DB, t)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
@@ -31,18 +31,11 @@ func CreatePeopleInvitation(c *fiber.Ctx) error {
 	})
 }
 
-// GetPeople POST /get/people
+// GetPeople GET /people
 func GetPeople(c *fiber.Ctx) error {
-	t := &people.People{}
+	username := c.Params("username")
 
-	if err := c.BodyParser(t); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	people, err := people.GetPeople(database.DB, t)
+	people, err := people.GetPeople(database.DB, username)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
@@ -52,14 +45,14 @@ func GetPeople(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(PeopleResponse{
 		Status:  "succes",
-		Message: "People succesfully got!",
+		Message: "People succesfully got",
 		Data:    people,
 	})
 }
 
-// AcceptPeopleInvitation POST /accept/people/invitation
-func AcceptPeopleInvitation(c *fiber.Ctx) error {
-	t := &people.AcceptInvite{}
+// AcceptPersonInvite PUT /people/invite
+func AcceptPersonInvite(c *fiber.Ctx) error {
+	t := &people.PeopleNotification{}
 
 	if err := c.BodyParser(t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -68,7 +61,7 @@ func AcceptPeopleInvitation(c *fiber.Ctx) error {
 		})
 	}
 
-	if err := people.AcceptInvitation(database.DB, t); err != nil {
+	if err := people.AcceptPersonInvite(database.DB, t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
 			Message: err.Error(),
@@ -77,57 +70,45 @@ func AcceptPeopleInvitation(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(Response{
 		Status:  "succes",
-		Message: "Invitation succesfully accepted!",
+		Message: "Invite succesfully accepted",
 	})
 }
 
-// CheckInvitations POST /check/people/invitations
-func CheckInvitations(c *fiber.Ctx) error {
-	t := &people.CheckIfFriend{}
+// GetPersonInvite GET /person/invite/:user1/:user2
+func GetPersonInvite(c *fiber.Ctx) error {
+	user1 := c.Params("user1")
+	user2 := c.Params("user2")
 
-	if err := c.BodyParser(t); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	record, err := people.CheckInvitations(database.DB, t)
+	invite, err := people.GetPersonInvite(database.DB, user1, user2)
 
 	if err != nil {
 		return c.Status(fiber.StatusOK).JSON(Response{
-			Status:  "succes",
+			Status:  "error",
 			Message: "No record found",
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(CheckInvitationsResponse{
+	return c.Status(fiber.StatusOK).JSON(GetInviteResponse{
 		Status:  "succes",
-		Message: "Invitations succesfully checked",
-		Data:    record,
+		Message: "Invite succesfully got",
+		Data:    invite,
 	})
 }
 
-// RemoveFriend POST /remove/friend
-func RemoveFriend(c *fiber.Ctx) error {
-	t := &people.Remove{}
+// RemovePerson DELETE /person
+func RemovePerson(c *fiber.Ctx) error {
+	user1 := c.Params("user1")
+	user2 := c.Params("user2")
 
-	if err := c.BodyParser(t); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+	if err := people.RemovePerson(database.DB, user1, user2); err != nil {
+		return c.Status(fiber.StatusOK).JSON(Response{
 			Status:  "error",
 			Message: err.Error(),
 		})
 	}
 
-	if err := people.RemoveFriend(database.DB, t); err != nil {
-		return c.Status(fiber.StatusOK).JSON(Response{
-			Status:  "succes",
-			Message: "No record found",
-		})
-	}
-
 	return c.Status(fiber.StatusOK).JSON(Response{
 		Status:  "succes",
-		Message: "Friend removed",
+		Message: "Connection removed",
 	})
 }

@@ -30,18 +30,11 @@ func CreateUser(c *fiber.Ctx) error {
 	})
 }
 
-// GetUser POST /get
+// GetUser GET /user
 func GetUser(c *fiber.Ctx) error {
-	t := &users.User{}
+	username := c.Params("username")
 
-	if err := c.BodyParser(t); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	user, err := users.GetUser(database.DB, t)
+	user, err := users.GetUser(database.DB, username)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
@@ -51,7 +44,7 @@ func GetUser(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(UserResponse{
 		Status:  "succes",
-		Message: "User succesfully got!",
+		Message: "User succesfully got",
 		Data:    user,
 	})
 }

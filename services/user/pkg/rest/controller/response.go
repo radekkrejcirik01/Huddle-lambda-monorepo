@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/huddles"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/users"
@@ -20,19 +21,25 @@ type UserResponse struct {
 type PeopleResponse struct {
 	Status  string          `json:"status"`
 	Message string          `json:"message,omitempty"`
-	Data    []people.People `json:"data,omitempty"`
+	Data    []people.Person `json:"data,omitempty"`
 }
 
-type CheckInvitationsResponse struct {
-	Status  string               `json:"status"`
-	Message string               `json:"message,omitempty"`
-	Data    people.CheckIfFriend `json:"data,omitempty"`
+type GetInviteResponse struct {
+	Status  string        `json:"status"`
+	Message string        `json:"message,omitempty"`
+	Data    people.Invite `json:"data,omitempty"`
 }
 
 type NotificationsResponse struct {
-	Status  string               `json:"status"`
-	Message string               `json:"message,omitempty"`
-	Data    []notifications.Data `json:"data,omitempty"`
+	Status  string                           `json:"status"`
+	Message string                           `json:"message,omitempty"`
+	Data    []notifications.NotificationData `json:"data,omitempty"`
+}
+
+type HuddlesResponse struct {
+	Status  string                `json:"status"`
+	Message string                `json:"message,omitempty"`
+	Data    []huddles.HuddlesData `json:"data,omitempty"`
 }
 
 type UploadPhotoResponse struct {

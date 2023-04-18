@@ -10,20 +10,20 @@ func Create() *fiber.App {
 	app := fiber.New()
 
 	app.Get("/", controller.Index)
+	app.Get("/user/:username", controller.GetUser)
 	app.Get("/notifications/:username", controller.GetNotifications)
+	app.Get("/people/:username", controller.GetPeople)
+	app.Get("/person/:user1/:user2", controller.GetPersonInvite)
+	app.Get("/huddles/:username", controller.GetHuddles)
 
-	app.Post("/create", controller.CreateUser)
-	app.Post("/get", controller.GetUser)
+	app.Post("/user", controller.CreateUser)
+	app.Post("/photo", controller.UploadPhoto)
+	app.Post("/person", controller.AddPersonInvite)
+	app.Post("/notify", controller.SendNotify)
 
-	app.Post("/upload/photo", controller.UploadPhoto)
+	app.Put("/person", controller.AcceptPersonInvite)
 
-	app.Post("/create/people/invitation", controller.CreatePeopleInvitation)
-	app.Post("/get/people", controller.GetPeople)
-	app.Post("/accept/people/invitation", controller.AcceptPeopleInvitation)
-	app.Post("/check/people/invitations", controller.CheckInvitations)
-	app.Post("/remove/friend", controller.RemoveFriend)
-
-	app.Post("/notify", controller.Notify)
+	app.Delete("/person/:user1/:user2", controller.RemovePerson)
 
 	return app
 }

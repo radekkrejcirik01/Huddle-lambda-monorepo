@@ -6,9 +6,9 @@ import (
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notify"
 )
 
-// Notifiy POST /notify
-func Notify(c *fiber.Ctx) error {
-	t := &notify.HangoutInvitation{}
+// SendNotify POST /notify
+func SendNotify(c *fiber.Ctx) error {
+	t := &notify.Notify{}
 
 	if err := c.BodyParser(t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -17,7 +17,7 @@ func Notify(c *fiber.Ctx) error {
 		})
 	}
 
-	if err := notify.Notify(database.DB, t); err != nil {
+	if err := notify.SendNotify(database.DB, t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
 			Message: err.Error(),
