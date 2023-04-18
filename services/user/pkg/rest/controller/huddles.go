@@ -25,3 +25,27 @@ func GetHuddles(c *fiber.Ctx) error {
 		Data:    huddles,
 	})
 }
+
+// HuddleInteract POST /huddle/interaction
+func HuddleInteract(c *fiber.Ctx) error {
+	t := &huddles.HuddleInteracted{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := huddles.HuddleInteract(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Huddle successfully interacted",
+	})
+}
