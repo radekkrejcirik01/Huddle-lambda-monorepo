@@ -1,6 +1,9 @@
 package controller
 
 import (
+	"fmt"
+	"strconv"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/database"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/huddles"
@@ -47,5 +50,28 @@ func HuddleInteract(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(Response{
 		Status:  "success",
 		Message: "Huddle successfully interacted",
+	})
+}
+
+// RemoveHuddleInteraction DELETE /huddle/interaction
+func RemoveHuddleInteraction(c *fiber.Ctx) error {
+	username := c.Params("username")
+	huddleId := c.Params("huddleId")
+
+	id, err := strconv.Atoi(huddleId)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	if err := huddles.RemoveHuddleInteraction(database.DB, username, uint(id)); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Huddle interaction removed",
 	})
 }

@@ -21,3 +21,12 @@ func HuddleInteract(db *gorm.DB, t *HuddleInteracted) error {
 		FirstOrCreate(&t).
 		Error
 }
+
+// Remove Huddle interaction from huddles_interacted table
+func RemoveHuddleInteraction(db *gorm.DB, username string, huddleId uint) error {
+	return db.
+		Table("huddles_interacted").
+		Where("username = ? AND huddle_id = ?", username, huddleId).
+		Delete(&HuddleInteracted{}).
+		Error
+}
