@@ -13,10 +13,10 @@ import (
 )
 
 type User struct {
-	Id             uint   `gorm:"primary_key;auto_increment;not_null" json:"id"`
-	Username       string `json:"username"`
-	Firstname      string `json:"firstname"`
-	ProfilePicture string `json:"profilePicture"`
+	Id           uint   `gorm:"primary_key;auto_increment;not_null" json:"id"`
+	Username     string `json:"username"`
+	Firstname    string `json:"firstname"`
+	ProfilePhoto string `json:"profilePhoto"`
 }
 
 type UserGet struct {
@@ -31,7 +31,7 @@ func (User) TableName() string {
 	return "users"
 }
 
-type UplaodProfilePictureBody struct {
+type UplaodProfilePhotoBody struct {
 	Username string
 	Buffer   string
 	FileName string
@@ -109,7 +109,7 @@ func GetUser(db *gorm.DB, username string) (UserGet, error) {
 	return userGet, nil
 }
 
-func UplaodProfilePicture(db *gorm.DB, t *UplaodProfilePictureBody) (string, error) {
+func UplaodProfilePhoto(db *gorm.DB, t *UplaodProfilePhotoBody) (string, error) {
 	accessKey, secretAccessKey := database.GetCredentials()
 
 	sess := session.Must(session.NewSession(
@@ -137,7 +137,7 @@ func UplaodProfilePicture(db *gorm.DB, t *UplaodProfilePictureBody) (string, err
 		return "", err
 	}
 
-	if err := db.Table("users").Where("username = ?", t.Username).Update("profile_picture", result.Location).Error; err != nil {
+	if err := db.Table("users").Where("username = ?", t.Username).Update("profile_photo", result.Location).Error; err != nil {
 		return "", err
 	}
 

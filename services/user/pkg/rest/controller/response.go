@@ -36,10 +36,17 @@ type NotificationsResponse struct {
 	Data    []notifications.NotificationData `json:"data,omitempty"`
 }
 
-type HuddlesResponse struct {
+type GetHuddlesResponse struct {
 	Status  string                `json:"status"`
 	Message string                `json:"message,omitempty"`
 	Data    []huddles.HuddlesData `json:"data,omitempty"`
+}
+
+type GetHuddleInteractionsResponse struct {
+	Status        string                         `json:"status"`
+	Message       string                         `json:"message,omitempty"`
+	Data          []huddles.HuddleInteractedData `json:"data,omitempty"`
+	ConfirmedUser *string                        `json:"confirmedUser"`
 }
 
 type UploadPhotoResponse struct {

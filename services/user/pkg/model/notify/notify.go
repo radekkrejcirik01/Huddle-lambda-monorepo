@@ -49,6 +49,6 @@ func SendNotify(db *gorm.DB, t *Notify) error {
 		Sound:   "default",
 		Devices: *tokens,
 	}
-	service.SendNotification(&hangoutNotification)
-	return nil
+
+	return service.SendNotification(&hangoutNotification)
 }

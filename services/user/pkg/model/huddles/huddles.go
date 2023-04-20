@@ -3,8 +3,11 @@ package huddles
 import (
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
 )
+
+const huddleType = "huddle"
 
 // Huddle is a communication app for creating hang outs with people by sharing simple posts called Huddles
 type Huddle struct {
@@ -13,12 +16,19 @@ type Huddle struct {
 	What      string
 	Where     string
 	When      string
-	Type      string `gorm:"type:enum('huddle', 'group_huddle')"`
-	Created   int64  `gorm:"autoCreateTime"`
+	Created   int64 `gorm:"autoCreateTime"`
 }
 
 func (Huddle) TableName() string {
 	return "huddles"
+}
+
+type NewHuddle struct {
+	Sender string
+	What   string
+	Where  string
+	When   string
+	People []string
 }
 
 type HuddlesData struct {
@@ -29,13 +39,84 @@ type HuddlesData struct {
 	What         string `json:"what"`
 	Where        string `json:"where"`
 	When         string `json:"when"`
-	Type         string `json:"type"`
 	Interacted   int    `json:"interacted"`
 }
 
 type Invite struct {
 	Sender   string
 	Receiver string
+}
+
+// Add Huddle to huddles table
+func AddHuddle(db *gorm.DB, t *NewHuddle) error {
+	huddle := Huddle{
+		CreatedBy: t.Sender,
+		What:      t.What,
+		Where:     t.Where,
+		When:      t.When,
+	}
+	if err := db.Table("huddles").Create(&huddle).Error; err != nil {
+		return err
+	}
+
+	tokens, getErr := service.GetTokensByUsernames(db, t.People)
+	if getErr != nil {
+		return nil
+	}
+
+	hangoutNotification := service.FcmNotification{
+		Sender:  t.Sender,
+		Type:    huddleType,
+		Body:    t.Sender + " added a new Huddle: " + t.What,
+		Devices: tokens,
+	}
+
+	return service.SendNotification(&hangoutNotification)
+}
+
+// Get user huddles from huddles table
+func GetUserHuddles(db *gorm.DB, username string) ([]HuddlesData, error) {
+	var huddlesData []HuddlesData
+
+	var interactedHuddlesIds []uint
+	if err := db.
+		Table("huddles_interacted").
+		Select("huddle_id").Where("sender = ? AND confirmed = 1", username).
+		Find(&interactedHuddlesIds).Error; err != nil {
+		return huddlesData, err
+	}
+
+	var huddles []Huddle
+	if err := db.
+		Table("huddles").
+		Where("created_by = ? OR id IN ?", username, interactedHuddlesIds).
+		Find(&huddles).Error; err != nil {
+		return huddlesData, err
+	}
+
+	users := GetUsernamesFromHuddles(huddles)
+	var profiles []p.Person
+	if err := db.Table("users").Where("username IN ?", users).Find(&profiles).Error; err != nil {
+		return huddlesData, err
+	}
+
+	for _, huddle := range huddles {
+		profileInfo := GetProfileInfoFromProfiles(profiles, huddle.CreatedBy)
+
+		huddlesData = append(huddlesData, HuddlesData{
+			Id:           huddle.Id,
+			CreatedBy:    huddle.CreatedBy,
+			Name:         profileInfo.Firstname,
+			ProfilePhoto: profileInfo.ProfilePhoto,
+			What:         huddle.What,
+			Where:        huddle.Where,
+			When:         huddle.When,
+			Interacted:   1,
+		})
+
+	}
+
+	return huddlesData, nil
 }
 
 // Get Huddles from huddles table
@@ -70,7 +151,7 @@ func GetHuddles(db *gorm.DB, username string) ([]HuddlesData, error) {
 	var interactedHuddlesIds []uint
 	if err := db.
 		Table("huddles_interacted").
-		Select("huddle_id").Where("username = ? AND huddle_id IN ?", username, huddlesIds).
+		Select("huddle_id").Where("sender = ? AND huddle_id IN ?", username, huddlesIds).
 		Find(&interactedHuddlesIds).Error; err != nil {
 		return huddlesData, err
 	}
@@ -89,11 +170,10 @@ func GetHuddles(db *gorm.DB, username string) ([]HuddlesData, error) {
 			Id:           huddle.Id,
 			CreatedBy:    huddle.CreatedBy,
 			Name:         profileInfo.Firstname,
-			ProfilePhoto: profileInfo.ProfilePicture,
+			ProfilePhoto: profileInfo.ProfilePhoto,
 			What:         huddle.What,
 			Where:        huddle.Where,
 			When:         huddle.When,
-			Type:         huddle.Type,
 			Interacted:   interacted,
 		})
 
@@ -130,10 +210,21 @@ func GetIdsFromHuddlesArray(huddles []Huddle) []uint {
 func GetUsernamesFromHuddles(huddles []Huddle) []string {
 	usernames := make([]string, 0)
 	for _, h := range huddles {
-		usernames = append(usernames, h.CreatedBy)
+		if !contains(usernames, h.CreatedBy) {
+			usernames = append(usernames, h.CreatedBy)
+		}
 	}
 
 	return usernames
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 // Get profile info from profiles array

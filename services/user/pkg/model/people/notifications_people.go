@@ -23,9 +23,9 @@ func (PeopleNotification) TableName() string {
 }
 
 type Person struct {
-	Username       string `json:"username"`
-	Firstname      string `json:"firstname"`
-	ProfilePicture string `json:"profilePicture"`
+	Username     string `json:"username"`
+	Firstname    string `json:"firstname"`
+	ProfilePhoto string `json:"profilePhoto"`
 }
 
 type Invite struct {

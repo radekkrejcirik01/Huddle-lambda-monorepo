@@ -18,18 +18,19 @@ type Notification struct {
 }
 
 type Profile struct {
-	Username       string
-	Firstname      string
-	ProfilePicture string
+	Username     string
+	Firstname    string
+	ProfilePhoto string
 }
 
 type NotificationData struct {
-	Sender         string `json:"sender"`
-	SenderName     string `json:"senderName"`
-	ProfilePicture string `json:"profilePicture"`
-	Type           string `json:"type"`
-	Accepted       *int   `json:"accepted,omitempty"`
-	Created        string `json:"created"`
+	Id           uint   `json:"id"`
+	Sender       string `json:"sender"`
+	SenderName   string `json:"senderName"`
+	ProfilePhoto string `json:"profilePhoto"`
+	Type         string `json:"type"`
+	Accepted     *int   `json:"accepted,omitempty"`
+	Created      string `json:"created"`
 }
 
 // Get notifications from notifications_people, notifications_notify and
@@ -55,29 +56,30 @@ func GetNotifications(db *gorm.DB, username string) ([]NotificationData, error) 
 			LIMIT ?
 			`
 
-	if err := db.Raw(query, username, username, username, 2).Scan(&notifications).Error; err != nil {
+	if err := db.Raw(query, username, username, username, 10).Scan(&notifications).Error; err != nil {
 		return notificationsData, err
 	}
 
 	usernames := getUsernames(notifications)
 
 	var profiles []Profile
-	if err := db.Table("users").Select("username, firstname, profile_picture").Where("username IN ?", usernames).Find(&profiles).Error; err != nil {
+	if err := db.Table("users").Select("username, firstname, profile_photo").Where("username IN ?", usernames).Find(&profiles).Error; err != nil {
 		return notificationsData, err
 	}
 
-	for _, notification := range notifications {
+	for i, notification := range notifications {
 		for _, profile := range profiles {
 			if profile.Username == notification.Sender {
 				time := time.Unix(notification.Created, 0).Format(timeFormat)
 
 				notificationsData = append(notificationsData, NotificationData{
-					Sender:         notification.Sender,
-					SenderName:     profile.Firstname,
-					ProfilePicture: profile.ProfilePicture,
-					Created:        time,
-					Accepted:       notification.Accepted,
-					Type:           notification.Type,
+					Id:           uint(i),
+					Sender:       notification.Sender,
+					SenderName:   profile.Firstname,
+					ProfilePhoto: profile.ProfilePhoto,
+					Created:      time,
+					Accepted:     notification.Accepted,
+					Type:         notification.Type,
 				})
 
 				break
