@@ -31,7 +31,7 @@ type NewHuddle struct {
 	People []string
 }
 
-type HuddlesData struct {
+type HuddleData struct {
 	Id           uint   `json:"id"`
 	CreatedBy    string `json:"createdBy"`
 	Name         string `json:"name"`
@@ -75,8 +75,8 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 }
 
 // Get user huddles from huddles table
-func GetUserHuddles(db *gorm.DB, username string) ([]HuddlesData, error) {
-	var huddlesData []HuddlesData
+func GetUserHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
+	var huddlesData []HuddleData
 
 	var interactedHuddlesIds []uint
 	if err := db.
@@ -103,7 +103,7 @@ func GetUserHuddles(db *gorm.DB, username string) ([]HuddlesData, error) {
 	for _, huddle := range huddles {
 		profileInfo := GetProfileInfoFromProfiles(profiles, huddle.CreatedBy)
 
-		huddlesData = append(huddlesData, HuddlesData{
+		huddlesData = append(huddlesData, HuddleData{
 			Id:           huddle.Id,
 			CreatedBy:    huddle.CreatedBy,
 			Name:         profileInfo.Firstname,
@@ -120,8 +120,8 @@ func GetUserHuddles(db *gorm.DB, username string) ([]HuddlesData, error) {
 }
 
 // Get Huddles from huddles table
-func GetHuddles(db *gorm.DB, username string) ([]HuddlesData, error) {
-	var huddlesData []HuddlesData
+func GetHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
+	var huddlesData []HuddleData
 
 	var invites []Invite
 	if err := db.
@@ -166,7 +166,7 @@ func GetHuddles(db *gorm.DB, username string) ([]HuddlesData, error) {
 		profileInfo := GetProfileInfoFromProfiles(profiles, huddle.CreatedBy)
 		interacted := GetInteraction(interactedHuddlesIds, huddle.Id)
 
-		huddlesData = append(huddlesData, HuddlesData{
+		huddlesData = append(huddlesData, HuddleData{
 			Id:           huddle.Id,
 			CreatedBy:    huddle.CreatedBy,
 			Name:         profileInfo.Firstname,
@@ -180,6 +180,37 @@ func GetHuddles(db *gorm.DB, username string) ([]HuddlesData, error) {
 	}
 
 	return huddlesData, nil
+}
+
+// Get Huddle from huddles table by id
+func GetHuddleById(db *gorm.DB, id uint) (HuddleData, error) {
+	var huddleData HuddleData
+
+	var huddle Huddle
+	if err := db.
+		Table("huddles").
+		Where("id = ?", id).
+		First(&huddle).Error; err != nil {
+		return huddleData, err
+	}
+
+	var profile p.Person
+	if err := db.Table("users").Where("username = ?", huddle.CreatedBy).First(&profile).Error; err != nil {
+		return huddleData, err
+	}
+
+	huddleData = HuddleData{
+		Id:           huddle.Id,
+		CreatedBy:    huddle.CreatedBy,
+		Name:         profile.Firstname,
+		ProfilePhoto: profile.ProfilePhoto,
+		What:         huddle.What,
+		Where:        huddle.Where,
+		When:         huddle.When,
+		Interacted:   1,
+	}
+
+	return huddleData, nil
 }
 
 // Get usernames from invites array

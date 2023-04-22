@@ -37,9 +37,15 @@ type NotificationsResponse struct {
 }
 
 type GetHuddlesResponse struct {
-	Status  string                `json:"status"`
-	Message string                `json:"message,omitempty"`
-	Data    []huddles.HuddlesData `json:"data,omitempty"`
+	Status  string               `json:"status"`
+	Message string               `json:"message,omitempty"`
+	Data    []huddles.HuddleData `json:"data,omitempty"`
+}
+
+type GetHuddleResponse struct {
+	Status  string             `json:"status"`
+	Message string             `json:"message,omitempty"`
+	Data    huddles.HuddleData `json:"data,omitempty"`
 }
 
 type GetHuddleInteractionsResponse struct {

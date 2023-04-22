@@ -73,6 +73,31 @@ func GetHuddles(c *fiber.Ctx) error {
 	})
 }
 
+// GetHuddleById GET /huddle/:id
+func GetHuddleById(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	huddleId, parseErr := strconv.Atoi(id)
+	if parseErr != nil {
+		fmt.Println(parseErr)
+	}
+
+	huddle, err := huddles.GetHuddleById(database.DB, uint(huddleId))
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(GetHuddleResponse{
+		Status:  "success",
+		Message: "Huddle successfully got",
+		Data:    huddle,
+	})
+}
+
 // HuddleInteract POST /huddle/interaction
 func HuddleInteract(c *fiber.Ctx) error {
 	t := &huddles.HuddleNotification{}

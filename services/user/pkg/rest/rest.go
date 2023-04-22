@@ -16,6 +16,7 @@ func Create() *fiber.App {
 	app.Get("/person/:user1/:user2", controller.GetPersonInvite)
 	app.Get("/huddles/user/:username", controller.GetUserHuddles)
 	app.Get("/huddles/:username", controller.GetHuddles)
+	app.Get("/huddle/:id", controller.GetHuddleById)
 	app.Get("/huddle/interactions/:huddleId",
 		controller.GetHuddleInteractions,
 	)
