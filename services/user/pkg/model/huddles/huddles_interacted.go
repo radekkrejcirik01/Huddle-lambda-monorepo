@@ -55,7 +55,7 @@ func HuddleInteract(db *gorm.DB, t *HuddleNotification) error {
 	hangoutNotification := service.FcmNotification{
 		Sender:  t.Sender,
 		Type:    huddleType,
-		Body:    t.Sender + " interacted with your Huddle 👋",
+		Body:    t.Sender + " tapped to a Huddle 👋",
 		Sound:   "default",
 		Devices: *tokens,
 	}
