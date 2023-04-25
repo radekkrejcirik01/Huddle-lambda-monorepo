@@ -9,13 +9,14 @@ import (
 
 const huddleType = "huddle"
 
-// Huddle is a communication app for creating hang outs with people by sharing simple posts called Huddles
+// Huddle is a communication app for suggesting hangouts by adding simple posts called Huddles
 type Huddle struct {
 	Id        uint `gorm:"primary_key;auto_increment;not_null"`
 	CreatedBy string
 	What      string
 	Where     string
 	When      string
+	Confirmed int   `gorm:"default:0"`
 	Created   int64 `gorm:"autoCreateTime"`
 }
 
@@ -81,7 +82,8 @@ func GetUserHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
 	var interactedHuddlesIds []uint
 	if err := db.
 		Table("huddles_interacted").
-		Select("huddle_id").Where("sender = ? AND confirmed = 1", username).
+		Select("huddle_id").
+		Where("sender = ? AND confirmed = 1", username).
 		Find(&interactedHuddlesIds).Error; err != nil {
 		return huddlesData, err
 	}
@@ -89,7 +91,7 @@ func GetUserHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
 	var huddles []Huddle
 	if err := db.
 		Table("huddles").
-		Where("created_by = ? OR id IN ?", username, interactedHuddlesIds).
+		Where("(created_by = ? AND confirmed = 1) OR id IN ?", username, interactedHuddlesIds).
 		Find(&huddles).Error; err != nil {
 		return huddlesData, err
 	}
@@ -126,19 +128,20 @@ func GetHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
 	var invites []Invite
 	if err := db.
 		Table("notifications_people").
-		Where("(sender = ? OR receiver = ?) AND type = 'person_invite' AND accepted = 1", username, username).
+		Where(
+			"(sender = ? OR receiver = ?) AND type = 'person_invite' AND accepted = 1",
+			username, username,
+		).
 		Find(&invites).Error; err != nil {
 		return huddlesData, err
 	}
 
 	people := GetUsernamesFromInvites(invites, username)
-	// Get also user's Huddles
-	people = append(people, username)
 
 	var huddles []Huddle
 	if err := db.
 		Table("huddles").
-		Where("created_by IN ?", people).
+		Where("(created_by IN ? OR created_by = ?) AND confirmed = 0", people, username).
 		Find(&huddles).Error; err != nil {
 		return huddlesData, err
 	}
@@ -195,7 +198,11 @@ func GetHuddleById(db *gorm.DB, id uint) (HuddleData, error) {
 	}
 
 	var profile p.Person
-	if err := db.Table("users").Where("username = ?", huddle.CreatedBy).First(&profile).Error; err != nil {
+	if err := db.
+		Table("users").
+		Where("username = ?", huddle.CreatedBy).
+		First(&profile).
+		Error; err != nil {
 		return huddleData, err
 	}
 

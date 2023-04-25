@@ -20,13 +20,13 @@ func (HuddleInteracted) TableName() string {
 	return "huddles_interacted"
 }
 
-type SenderConfirmed struct {
+type Interaction struct {
 	Sender    string
 	Confirmed int
 }
 
-type HuddleInteractedData struct {
-	Id           uint   `json:"id"`
+type UserInteracted struct {
+	Id           *uint  `json:"id"`
 	Username     string `json:"username"`
 	Firstname    string `json:"name"`
 	ProfilePhoto string `json:"profilePhoto"`
@@ -64,32 +64,36 @@ func HuddleInteract(db *gorm.DB, t *HuddleNotification) error {
 }
 
 // Get Huddle interactions from huddles_interacted table
-func GetHuddleInteractions(db *gorm.DB, huddleId uint) ([]HuddleInteractedData, *string, error) {
-	var huddleInteractedData []HuddleInteractedData
+func GetHuddleInteractions(db *gorm.DB, huddleId uint) ([]UserInteracted, *UserInteracted, error) {
+	var usersInteracted []UserInteracted
 
-	var huddlesInteracted []SenderConfirmed
+	var interactions []Interaction
 	if err := db.
 		Table("huddles_interacted").
 		Select("sender, confirmed").
 		Where("huddle_id = ?", huddleId).
-		Find(&huddlesInteracted).
+		Find(&interactions).
 		Error; err != nil {
-		return huddleInteractedData, nil, err
+		return usersInteracted, nil, err
 	}
 
-	usernames := getUsernamesFromHuddlesInteracted(huddlesInteracted)
+	usernames := getUsernamesFromHuddlesInteracted(interactions)
 
 	if err := db.
 		Table("users").
 		Where("username IN ?", usernames).
-		Find(&huddleInteractedData).
+		Find(&usersInteracted).
 		Error; err != nil {
-		return huddleInteractedData, nil, err
+		return usersInteracted, nil, err
 	}
 
-	confirmedUser := getConfirmedUser(huddlesInteracted)
+	confirmedUser := getConfirmedUser(interactions, usersInteracted)
 
-	return huddleInteractedData, confirmedUser, nil
+	if confirmedUser != nil {
+		usersInteracted = removeConfirmedUser(usersInteracted, confirmedUser.Username)
+	}
+
+	return usersInteracted, confirmedUser, nil
 }
 
 // Confirm Huddle interaction, add notification to notifications_huddles table
@@ -104,6 +108,14 @@ func ConfirmHuddle(db *gorm.DB, t *HuddleNotification) error {
 	if err := db.
 		Table("huddles_interacted").
 		Where("sender = ? AND huddle_id = ?", t.Receiver, t.HuddleId).
+		Update("confirmed", 1).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("huddles").
+		Where("id = ?", t.HuddleId).
 		Update("confirmed", 1).
 		Error; err != nil {
 		return err
@@ -133,21 +145,40 @@ func RemoveHuddleInteraction(db *gorm.DB, username string, huddleId uint) error 
 		Error
 }
 
-func getUsernamesFromHuddlesInteracted(huddlesInteracted []SenderConfirmed) []string {
+func getUsernamesFromHuddlesInteracted(interactions []Interaction) []string {
 	usernames := make([]string, 0)
-	for _, huddleInteracted := range huddlesInteracted {
-		usernames = append(usernames, huddleInteracted.Sender)
+	for _, interaction := range interactions {
+		usernames = append(usernames, interaction.Sender)
 	}
 
 	return usernames
 }
 
-func getConfirmedUser(huddlesInteracted []SenderConfirmed) *string {
-	for _, huddleInteracted := range huddlesInteracted {
-		if huddleInteracted.Confirmed == 1 {
-			return &huddleInteracted.Sender
+func getConfirmedUser(interactions []Interaction, usersInteracted []UserInteracted) *UserInteracted {
+	for _, interaction := range interactions {
+		if interaction.Confirmed == 1 {
+			for _, user := range usersInteracted {
+				if user.Username == interaction.Sender {
+					return &UserInteracted{
+						Username:     user.Username,
+						Firstname:    user.Firstname,
+						ProfilePhoto: user.ProfilePhoto,
+					}
+				}
+			}
 		}
 	}
 
 	return nil
+}
+
+func removeConfirmedUser(usersInteracted []UserInteracted, confirmedUser string) []UserInteracted {
+	var array []UserInteracted
+	for _, userInteracted := range usersInteracted {
+		if userInteracted.Username != confirmedUser {
+			array = append(array, userInteracted)
+		}
+	}
+
+	return array
 }
