@@ -73,6 +73,30 @@ func GetHuddles(c *fiber.Ctx) error {
 	})
 }
 
+// UpdateHuddle PUT /huddle
+func UpdateHuddle(c *fiber.Ctx) error {
+	t := &huddles.Update{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := huddles.UpdateHuddle(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Huddle successfully updated",
+	})
+}
+
 // GetHuddleById GET /huddle/:id
 func GetHuddleById(c *fiber.Ctx) error {
 	id := c.Params("id")

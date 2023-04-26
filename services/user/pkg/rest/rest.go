@@ -30,6 +30,7 @@ func Create() *fiber.App {
 	app.Post("/huddle/confirm", controller.ConfirmHuddle)
 
 	app.Put("/person", controller.AcceptPersonInvite)
+	app.Put("/huddle", controller.UpdateHuddle)
 
 	app.Delete("/person/:user1/:user2", controller.RemovePerson)
 	app.Delete("/huddle/interaction/:username/:huddleId",

@@ -47,6 +47,13 @@ type Invite struct {
 	Receiver string
 }
 
+type Update struct {
+	Id    uint
+	What  string
+	Where string
+	When  string
+}
+
 // Add Huddle to huddles table
 func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 	huddle := Huddle{
@@ -192,6 +199,17 @@ func GetHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
 	}
 
 	return huddlesData, nil
+}
+
+// Update Huddle in huddles table
+func UpdateHuddle(db *gorm.DB, t *Update) error {
+	update := map[string]interface{}{
+		"what":  t.What,
+		"where": t.Where,
+		"when":  t.When,
+	}
+
+	return db.Table("huddles").Where("id = ?", t.Id).Updates(update).Error
 }
 
 // Get Huddle from huddles table by id
