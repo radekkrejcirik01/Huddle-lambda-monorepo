@@ -29,7 +29,6 @@ type NewHuddle struct {
 	What   string
 	Where  string
 	When   string
-	People []string
 }
 
 type HuddleData struct {
@@ -60,7 +59,17 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 		return err
 	}
 
-	tokens, getErr := service.GetTokensByUsernames(db, t.People)
+	var acceptedInvites []p.PeopleNotification
+	if err := db.
+		Table("notifications_people").
+		Where("(sender = ? OR receiver = ?) AND type = 'person_invite' AND accepted = 1", t.Sender, t.Sender).
+		Find(&acceptedInvites).Error; err != nil {
+		return err
+	}
+
+	usernames := p.GetUsernamesFromAcceptedInvites(acceptedInvites, t.Sender)
+
+	tokens, getErr := service.GetTokensByUsernames(db, usernames)
 	if getErr != nil {
 		return nil
 	}
