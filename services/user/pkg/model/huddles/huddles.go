@@ -18,6 +18,7 @@ type Huddle struct {
 	When      string
 	Confirmed int   `gorm:"default:0"`
 	Created   int64 `gorm:"autoCreateTime"`
+	Canceled  int   `gorm:"default:0"`
 }
 
 func (Huddle) TableName() string {
@@ -39,7 +40,9 @@ type HuddleData struct {
 	What         string `json:"what"`
 	Where        string `json:"where"`
 	When         string `json:"when"`
-	Interacted   int    `json:"interacted"`
+	Interacted   int    `json:"interacted,omitempty"`
+	Confirmed    int    `json:"confirmed,omitempty"`
+	Canceled     int    `json:"canceled,omitempty"`
 }
 
 type Invite struct {
@@ -52,6 +55,10 @@ type Update struct {
 	What  string
 	Where string
 	When  string
+}
+
+type PostAgain struct {
+	Id uint
 }
 
 // Add Huddle to huddles table
@@ -94,32 +101,42 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 // Get user huddles from huddles table
 func GetUserHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
 	var huddlesData []HuddleData
-
-	var interactedHuddlesIds []uint
-	if err := db.
-		Table("huddles_interacted").
-		Select("huddle_id").
-		Where("sender = ? AND confirmed = 1", username).
-		Find(&interactedHuddlesIds).Error; err != nil {
-		return huddlesData, err
-	}
-
 	var huddles []Huddle
-	if err := db.
-		Table("huddles").
-		Where("(created_by = ? AND confirmed = 1) OR id IN ?", username, interactedHuddlesIds).
-		Find(&huddles).Error; err != nil {
+	var profiles []p.Person
+
+	query :=
+		`
+		SELECT
+			*
+		FROM
+			huddles
+		WHERE
+			created_by = ?
+			OR id IN(
+				SELECT
+					huddle_id FROM huddles_interacted
+				WHERE
+					sender = ?
+					AND confirmed = 1)
+		ORDER BY
+			created DESC
+		`
+	if err := db.Raw(query, username, username).Find(&huddles).Error; err != nil {
 		return huddlesData, err
 	}
 
 	users := GetUsernamesFromHuddles(huddles)
-	var profiles []p.Person
 	if err := db.Table("users").Where("username IN ?", users).Find(&profiles).Error; err != nil {
 		return huddlesData, err
 	}
 
 	for _, huddle := range huddles {
 		profileInfo := GetProfileInfoFromProfiles(profiles, huddle.CreatedBy)
+
+		var interacted int
+		if huddle.CreatedBy != username {
+			interacted = 1
+		}
 
 		huddlesData = append(huddlesData, HuddleData{
 			Id:           huddle.Id,
@@ -129,7 +146,9 @@ func GetUserHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
 			What:         huddle.What,
 			Where:        huddle.Where,
 			When:         huddle.When,
-			Interacted:   1,
+			Interacted:   interacted,
+			Confirmed:    huddle.Confirmed,
+			Canceled:     huddle.Canceled,
 		})
 
 	}
@@ -157,8 +176,10 @@ func GetHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
 	var huddles []Huddle
 	if err := db.
 		Table("huddles").
-		Where("(created_by IN ? OR created_by = ?) AND confirmed = 0", people, username).
-		Find(&huddles).Error; err != nil {
+		Where("(created_by IN ? OR created_by = ?) AND confirmed = 0 AND canceled = 0", people, username).
+		Order("created DESC").
+		Find(&huddles).
+		Error; err != nil {
 		return huddlesData, err
 	}
 
@@ -170,7 +191,8 @@ func GetHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
 	var interactedHuddlesIds []uint
 	if err := db.
 		Table("huddles_interacted").
-		Select("huddle_id").Where("sender = ? AND huddle_id IN ?", username, huddlesIds).
+		Select("huddle_id").
+		Where("sender = ? AND huddle_id IN ?", username, huddlesIds).
 		Find(&interactedHuddlesIds).Error; err != nil {
 		return huddlesData, err
 	}
@@ -212,6 +234,11 @@ func UpdateHuddle(db *gorm.DB, t *Update) error {
 	return db.Table("huddles").Where("id = ?", t.Id).Updates(update).Error
 }
 
+// Update Huddle canceled column in huddles table
+func PostHuddleAgain(db *gorm.DB, t *PostAgain) error {
+	return db.Table("huddles").Where("id = ?", t.Id).Update("canceled", 0).Error
+}
+
 // Get Huddle from huddles table by id
 func GetHuddleById(db *gorm.DB, id uint) (HuddleData, error) {
 	var huddleData HuddleData
@@ -242,6 +269,7 @@ func GetHuddleById(db *gorm.DB, id uint) (HuddleData, error) {
 		Where:        huddle.Where,
 		When:         huddle.When,
 		Interacted:   1,
+		Confirmed:    huddle.Confirmed,
 	}
 
 	return huddleData, nil

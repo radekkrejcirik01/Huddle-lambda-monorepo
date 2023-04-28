@@ -138,11 +138,36 @@ func ConfirmHuddle(db *gorm.DB, t *HuddleNotification) error {
 
 // Remove Huddle interaction from huddles_interacted table
 func RemoveHuddleInteraction(db *gorm.DB, username string, huddleId uint) error {
-	return db.
+	var interaction HuddleInteracted
+
+	if err := db.
+		Table("huddles_interacted").
+		Where("sender = ? AND huddle_id = ?", username, huddleId).
+		First(&interaction).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
 		Table("huddles_interacted").
 		Where("sender = ? AND huddle_id = ?", username, huddleId).
 		Delete(&HuddleInteracted{}).
-		Error
+		Error; err != nil {
+		return err
+	}
+
+	if interaction.Confirmed == 1 {
+		update := map[string]interface{}{
+			"confirmed": 0,
+			"canceled":  1,
+		}
+
+		if err := db.Table("huddles").Where("id = ?", huddleId).Updates(update).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func getUsernamesFromHuddlesInteracted(interactions []Interaction) []string {
