@@ -146,6 +146,28 @@ func GetHuddleById(c *fiber.Ctx) error {
 	})
 }
 
+// DeleteHuddle DELETE /huddle/:id
+func DeleteHuddle(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	huddleId, parseErr := strconv.Atoi(id)
+	if parseErr != nil {
+		fmt.Println(parseErr)
+	}
+
+	if err := huddles.DeleteHuddle(database.DB, uint(huddleId)); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Huddle deleted",
+	})
+}
+
 // HuddleInteract POST /huddle/interaction
 func HuddleInteract(c *fiber.Ctx) error {
 	t := &huddles.HuddleNotification{}

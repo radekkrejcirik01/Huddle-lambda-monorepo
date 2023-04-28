@@ -275,6 +275,18 @@ func GetHuddleById(db *gorm.DB, id uint) (HuddleData, error) {
 	return huddleData, nil
 }
 
+func DeleteHuddle(db *gorm.DB, id uint) error {
+	if err := db.Table("huddles").Where("id = ?", id).Delete(&Huddle{}).Error; err != nil {
+		return err
+	}
+
+	if err := db.Table("huddles_interacted").Where("huddle_id = ?", id).Delete(&HuddleInteracted{}).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Get usernames from invites array
 func GetUsernamesFromInvites(invites []Invite, username string) []string {
 	usernames := make([]string, 0)
