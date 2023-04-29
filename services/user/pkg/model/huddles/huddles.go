@@ -270,6 +270,7 @@ func GetHuddleById(db *gorm.DB, id uint) (HuddleData, error) {
 		When:         huddle.When,
 		Interacted:   1,
 		Confirmed:    huddle.Confirmed,
+		Canceled:     huddle.Canceled,
 	}
 
 	return huddleData, nil
