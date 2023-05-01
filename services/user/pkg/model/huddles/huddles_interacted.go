@@ -32,6 +32,10 @@ type UserInteracted struct {
 	ProfilePhoto string `json:"profilePhoto"`
 }
 
+type RemoveConfirm struct {
+	Id uint
+}
+
 // Add Huddle interaction to huddles_interacted table
 func HuddleInteract(db *gorm.DB, t *HuddleNotification) error {
 	t.Type = huddleInteractedType
@@ -165,6 +169,23 @@ func RemoveHuddleInteraction(db *gorm.DB, username string, huddleId uint) error 
 		if err := db.Table("huddles").Where("id = ?", huddleId).Updates(update).Error; err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+// Remove Huddle confirm in huddles and huddles_interacted tables
+func RemoveHuddleConfirm(db *gorm.DB, t *RemoveConfirm) error {
+	if err := db.Table("huddles").Where("id = ?", t.Id).Update("confirmed", 0).Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("huddles_interacted").
+		Where("huddle_id = ? AND confirmed = 1", t.Id).
+		Update("confirmed", 0).
+		Error; err != nil {
+		return err
 	}
 
 	return nil

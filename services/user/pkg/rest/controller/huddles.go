@@ -265,3 +265,27 @@ func RemoveHuddleInteraction(c *fiber.Ctx) error {
 		Message: "Huddle interaction removed",
 	})
 }
+
+// RemoveHuddleConfirm PUT /huddle/confirm
+func RemoveHuddleConfirm(c *fiber.Ctx) error {
+	t := &huddles.RemoveConfirm{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := huddles.RemoveHuddleConfirm(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Huddle confirm removed",
+	})
+}
