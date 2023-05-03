@@ -55,6 +55,12 @@ type GetHuddleInteractionsResponse struct {
 	ConfirmedUser *huddles.UserInteracted  `json:"confirmedUser"`
 }
 
+type GetHuddleCommentsResponse struct {
+	Status  string                      `json:"status"`
+	Message string                      `json:"message,omitempty"`
+	Data    []huddles.HuddleCommentData `json:"data,omitempty"`
+}
+
 type UploadPhotoResponse struct {
 	Status   string `json:"status"`
 	Message  string `json:"message,omitempty"`

@@ -289,3 +289,51 @@ func RemoveHuddleConfirm(c *fiber.Ctx) error {
 		Message: "Huddle confirm removed",
 	})
 }
+
+// AddHuddleComment POST /huddle/comment
+func AddHuddleComment(c *fiber.Ctx) error {
+	t := &huddles.AddComment{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := huddles.AddHuddleComment(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Addded Huddle comment successfully",
+	})
+}
+
+// GetHuddleComments GET /huddle/comments/:huddleId
+func GetHuddleComments(c *fiber.Ctx) error {
+	huddleId := c.Params("huddleId")
+
+	id, err := strconv.Atoi(huddleId)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	comments, err := huddles.GetHuddleComments(database.DB, uint(id))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(GetHuddleCommentsResponse{
+		Status:  "success",
+		Message: "Huddle comments successfully got",
+		Data:    comments,
+	})
+}

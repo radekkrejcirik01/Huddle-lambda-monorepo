@@ -23,6 +23,7 @@ func init() {
 		&huddles.HuddleInteracted{},
 		&huddles.Huddle{},
 		&huddles.HuddleNotification{},
+		&huddles.HuddleComment{},
 		&notify.NotifyNotification{},
 		&people.PeopleNotification{},
 		&users.User{},
