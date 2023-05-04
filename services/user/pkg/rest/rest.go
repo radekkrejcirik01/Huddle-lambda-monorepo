@@ -32,6 +32,7 @@ func Create() *fiber.App {
 	app.Post("/huddle/interaction", controller.HuddleInteract)
 	app.Post("/huddle/confirm", controller.ConfirmHuddle)
 	app.Post("/huddle/comment", controller.AddHuddleComment)
+	app.Post("/huddle/comment/mention", controller.AddHuddleMentionComment)
 
 	app.Put("/person", controller.AcceptPersonInvite)
 	app.Put("/huddle", controller.UpdateHuddle)

@@ -56,9 +56,10 @@ type GetHuddleInteractionsResponse struct {
 }
 
 type GetHuddleCommentsResponse struct {
-	Status  string                      `json:"status"`
-	Message string                      `json:"message,omitempty"`
-	Data    []huddles.HuddleCommentData `json:"data,omitempty"`
+	Status   string                      `json:"status"`
+	Message  string                      `json:"message,omitempty"`
+	Data     []huddles.HuddleCommentData `json:"data,omitempty"`
+	Mentions []huddles.Mention           `json:"mentions,omitempty"`
 }
 
 type UploadPhotoResponse struct {

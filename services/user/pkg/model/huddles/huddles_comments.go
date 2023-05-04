@@ -3,7 +3,7 @@ package huddles
 import (
 	"time"
 
-	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
+	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
 )
@@ -15,23 +15,31 @@ type HuddleComment struct {
 	Sender   string
 	HuddleId uint
 	Message  string
+	Mention  *string
 	Created  int64 `gorm:"autoCreateTime"`
 }
 
-type AddComment struct {
+type MentionComment struct {
 	Sender   string
+	Receiver string
 	HuddleId uint
 	Message  string
-	Mentions []string
+}
+
+type Mention struct {
+	Username     string `json:"username"`
+	Name         string `json:"name"`
+	ProfilePhoto string `json:"profilePhoto"`
 }
 
 type HuddleCommentData struct {
-	Id           uint   `json:"id"`
-	Sender       string `json:"sender"`
-	Name         string `json:"name"`
-	ProfilePhoto string `json:"profilePhoto"`
-	Message      string `json:"message"`
-	Time         string `json:"time"`
+	Id           uint    `json:"id"`
+	Sender       string  `json:"sender"`
+	Name         string  `json:"name"`
+	ProfilePhoto string  `json:"profilePhoto"`
+	Message      string  `json:"message"`
+	Mention      *string `json:"mention,omitempty"`
+	Time         string  `json:"time"`
 }
 
 func (HuddleComment) TableName() string {
@@ -39,17 +47,11 @@ func (HuddleComment) TableName() string {
 }
 
 // Add Huddle comment to huddles_comments table
-func AddHuddleComment(db *gorm.DB, t *AddComment) error {
+func AddHuddleComment(db *gorm.DB, t *HuddleComment) error {
 	var createdBy string
 	var name string
 
-	huddleComment := HuddleComment{
-		Sender:   t.Sender,
-		HuddleId: t.HuddleId,
-		Message:  t.Message,
-	}
-
-	if err := db.Table("huddles_comments").Create(&huddleComment).Error; err != nil {
+	if err := db.Table("huddles_comments").Create(&t).Error; err != nil {
 		return err
 	}
 
@@ -62,7 +64,7 @@ func AddHuddleComment(db *gorm.DB, t *AddComment) error {
 		return err
 	}
 
-	if t.Sender == createdBy && len(t.Mentions) == 0 {
+	if t.Sender == createdBy {
 		return nil
 	}
 
@@ -75,25 +77,56 @@ func AddHuddleComment(db *gorm.DB, t *AddComment) error {
 		return err
 	}
 
-	usernames := []string{createdBy}
-	if len(t.Mentions) > 0 {
-		usernames = t.Mentions
-	}
-
-	tokens, err := service.GetTokensByUsernames(db, usernames)
-	if err != nil {
+	tokens := []string{}
+	if err := service.GetTokensByUsername(db, &tokens, createdBy); err != nil {
 		return nil
-	}
-
-	title := name + " added a comment"
-	if len(t.Mentions) > 0 {
-		title = name + " mentioned you"
 	}
 
 	notification := service.FcmNotification{
 		Sender:  t.Sender,
 		Type:    "comment",
-		Title:   title,
+		Title:   name + " added a comment",
+		Body:    t.Message,
+		Sound:   "default",
+		Devices: tokens,
+	}
+
+	return service.SendNotification(&notification)
+}
+
+// Add Huddle mention comment to huddles_comments table
+func AddHuddleMentionComment(db *gorm.DB, t *MentionComment) error {
+	var name string
+
+	comment := HuddleComment{
+		Sender:   t.Sender,
+		HuddleId: t.HuddleId,
+		Message:  t.Message,
+		Mention:  &t.Receiver,
+	}
+
+	if err := db.Table("huddles_comments").Create(&comment).Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("users").
+		Select("firstname").
+		Where("username = ?", t.Sender).
+		Find(&name).
+		Error; err != nil {
+		return err
+	}
+
+	tokens := []string{}
+	if err := service.GetTokensByUsername(db, &tokens, t.Receiver); err != nil {
+		return nil
+	}
+
+	notification := service.FcmNotification{
+		Sender:  t.Sender,
+		Type:    "comment",
+		Title:   name + " mentioned you",
 		Body:    t.Message,
 		Sound:   "default",
 		Devices: tokens,
@@ -103,51 +136,55 @@ func AddHuddleComment(db *gorm.DB, t *AddComment) error {
 }
 
 // Get Huddle comments from huddles_comments table
-func GetHuddleComments(db *gorm.DB, huddleId uint) ([]HuddleCommentData, error) {
+func GetHuddleComments(db *gorm.DB, huddleId uint) ([]HuddleCommentData, []Mention, error) {
 	var comments []HuddleCommentData
+	var mentions []Mention
 	var huddleComments []HuddleComment
-	var people []people.Person
+	var people []p.Person
 
 	if err := db.
 		Table("huddles_comments").
 		Where("huddle_id = ?", huddleId).
 		Find(&huddleComments).
 		Error; err != nil {
-		return comments, err
+		return comments, mentions, err
 	}
 
-	commentsUsernames := getUsernamesFromComments(huddleComments)
+	commentsUsernames := getCommentsUsernames(huddleComments)
 	if err := db.
 		Table("users").
 		Where("username IN ?", commentsUsernames).
 		Find(&people).
 		Error; err != nil {
-		return comments, err
+		return comments, mentions, err
 	}
 
 	for _, comment := range huddleComments {
-		for _, user := range people {
-			if comment.Sender == user.Username {
-				time := time.Unix(comment.Created, 0).Format(timeFormat)
+		user := getCommentUser(comment.Sender, people)
+		time := time.Unix(comment.Created, 0).Format(timeFormat)
+		var mention *string
 
-				comments = append(comments, HuddleCommentData{
-					Id:           comment.Id,
-					Sender:       comment.Sender,
-					Name:         user.Firstname,
-					ProfilePhoto: user.ProfilePhoto,
-					Message:      comment.Message,
-					Time:         time,
-				})
-
-				break
-			}
+		if comment.Mention != nil {
+			mention = getMentionName(*comment.Mention, people)
 		}
+
+		comments = append(comments, HuddleCommentData{
+			Id:           comment.Id,
+			Sender:       comment.Sender,
+			Name:         user.Firstname,
+			ProfilePhoto: user.ProfilePhoto,
+			Message:      comment.Message,
+			Mention:      mention,
+			Time:         time,
+		})
 	}
 
-	return comments, nil
+	mentions = getMentions(commentsUsernames, people)
+
+	return comments, mentions, nil
 }
 
-func getUsernamesFromComments(huddleComments []HuddleComment) []string {
+func getCommentsUsernames(huddleComments []HuddleComment) []string {
 	var usernames []string
 
 	for _, comment := range huddleComments {
@@ -157,4 +194,44 @@ func getUsernamesFromComments(huddleComments []HuddleComment) []string {
 	}
 
 	return usernames
+}
+
+func getCommentUser(username string, people []p.Person) p.Person {
+	for _, user := range people {
+		if user.Username == username {
+			return user
+		}
+	}
+
+	return p.Person{}
+}
+
+func getMentionName(mention string, people []p.Person) *string {
+	for _, user := range people {
+		if user.Username == mention {
+			return &user.Firstname
+		}
+	}
+
+	return nil
+}
+
+func getMentions(usernames []string, people []p.Person) []Mention {
+	var mentions []Mention
+
+	for _, username := range usernames {
+		for _, user := range people {
+			if username == user.Username {
+				mentions = append(mentions, Mention{
+					Username:     user.Username,
+					Name:         user.Firstname,
+					ProfilePhoto: user.ProfilePhoto,
+				})
+
+				break
+			}
+		}
+	}
+
+	return mentions
 }
