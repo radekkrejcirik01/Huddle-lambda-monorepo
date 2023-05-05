@@ -27,19 +27,19 @@ type MentionComment struct {
 }
 
 type Mention struct {
-	Username     string `json:"username"`
+	Username     string `json:"username,omitempty"`
 	Name         string `json:"name"`
-	ProfilePhoto string `json:"profilePhoto"`
+	ProfilePhoto string `json:"profilePhoto,omitempty"`
 }
 
 type HuddleCommentData struct {
-	Id           uint    `json:"id"`
-	Sender       string  `json:"sender"`
-	Name         string  `json:"name"`
-	ProfilePhoto string  `json:"profilePhoto"`
-	Message      string  `json:"message"`
-	Mention      *string `json:"mention,omitempty"`
-	Time         string  `json:"time"`
+	Id           uint     `json:"id"`
+	Sender       string   `json:"sender"`
+	Name         string   `json:"name"`
+	ProfilePhoto string   `json:"profilePhoto,omitempty"`
+	Message      string   `json:"message"`
+	Mention      *Mention `json:"mention,omitempty"`
+	Time         string   `json:"time"`
 }
 
 func (HuddleComment) TableName() string {
@@ -162,10 +162,10 @@ func GetHuddleComments(db *gorm.DB, huddleId uint) ([]HuddleCommentData, []Menti
 	for _, comment := range huddleComments {
 		user := getCommentUser(comment.Sender, people)
 		time := time.Unix(comment.Created, 0).Format(timeFormat)
-		var mention *string
+		var mention *Mention
 
 		if comment.Mention != nil {
-			mention = getMentionName(*comment.Mention, people)
+			mention = getMention(*comment.Mention, people)
 		}
 
 		comments = append(comments, HuddleCommentData{
@@ -206,10 +206,13 @@ func getCommentUser(username string, people []p.Person) p.Person {
 	return p.Person{}
 }
 
-func getMentionName(mention string, people []p.Person) *string {
+func getMention(mention string, people []p.Person) *Mention {
 	for _, user := range people {
 		if user.Username == mention {
-			return &user.Firstname
+			return &Mention{
+				Name:         user.Firstname,
+				ProfilePhoto: user.ProfilePhoto,
+			}
 		}
 	}
 

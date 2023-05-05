@@ -27,7 +27,6 @@ func Create() *fiber.App {
 	app.Post("/user", controller.CreateUser)
 	app.Post("/photo", controller.UploadPhoto)
 	app.Post("/person", controller.AddPersonInvite)
-	app.Post("/notify", controller.SendNotify)
 	app.Post("/huddle", controller.AddHuddle)
 	app.Post("/huddle/interaction", controller.HuddleInteract)
 	app.Post("/huddle/confirm", controller.ConfirmHuddle)

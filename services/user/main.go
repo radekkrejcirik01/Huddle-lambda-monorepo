@@ -9,7 +9,6 @@ import (
 	fiberadapter "github.com/awslabs/aws-lambda-go-api-proxy/fiber"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/database"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/huddles"
-	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notify"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/users"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/rest"
@@ -24,7 +23,6 @@ func init() {
 		&huddles.Huddle{},
 		&huddles.HuddleNotification{},
 		&huddles.HuddleComment{},
-		&notify.NotifyNotification{},
 		&people.PeopleNotification{},
 		&users.User{},
 	); err != nil {
