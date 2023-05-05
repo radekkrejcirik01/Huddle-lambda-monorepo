@@ -19,6 +19,10 @@ type HuddleComment struct {
 	Created  int64 `gorm:"autoCreateTime"`
 }
 
+func (HuddleComment) TableName() string {
+	return "huddles_comments"
+}
+
 type MentionComment struct {
 	Sender   string
 	Receiver string
@@ -39,11 +43,9 @@ type HuddleCommentData struct {
 	ProfilePhoto string   `json:"profilePhoto,omitempty"`
 	Message      string   `json:"message"`
 	Mention      *Mention `json:"mention,omitempty"`
+	LikesNumber  int      `json:"likesNumber,omitempty"`
+	Liked        int      `json:"liked,omitempty"`
 	Time         string   `json:"time"`
-}
-
-func (HuddleComment) TableName() string {
-	return "huddles_comments"
 }
 
 // Add Huddle comment to huddles_comments table
@@ -136,11 +138,12 @@ func AddHuddleMentionComment(db *gorm.DB, t *MentionComment) error {
 }
 
 // Get Huddle comments from huddles_comments table
-func GetHuddleComments(db *gorm.DB, huddleId uint) ([]HuddleCommentData, []Mention, error) {
+func GetHuddleComments(db *gorm.DB, huddleId uint, username string) ([]HuddleCommentData, []Mention, error) {
 	var comments []HuddleCommentData
 	var mentions []Mention
 	var huddleComments []HuddleComment
 	var people []p.Person
+	var likes []HuddleCommentLike
 
 	if err := db.
 		Table("huddles_comments").
@@ -159,10 +162,20 @@ func GetHuddleComments(db *gorm.DB, huddleId uint) ([]HuddleCommentData, []Menti
 		return comments, mentions, err
 	}
 
+	if err := db.
+		Table("huddles_comments_likes").
+		Where("huddle_id = ?", huddleId).
+		Find(&likes).
+		Error; err != nil {
+		return comments, mentions, err
+	}
+
 	for _, comment := range huddleComments {
 		user := getCommentUser(comment.Sender, people)
 		time := time.Unix(comment.Created, 0).Format(timeFormat)
 		var mention *Mention
+		usersLiked := getLikesNumberPerComment(likes, comment.Id)
+		liked := liked(usersLiked, username)
 
 		if comment.Mention != nil {
 			mention = getMention(*comment.Mention, people)
@@ -174,6 +187,8 @@ func GetHuddleComments(db *gorm.DB, huddleId uint) ([]HuddleCommentData, []Menti
 			Name:         user.Firstname,
 			ProfilePhoto: user.ProfilePhoto,
 			Message:      comment.Message,
+			LikesNumber:  len(usersLiked),
+			Liked:        liked,
 			Mention:      mention,
 			Time:         time,
 		})
@@ -237,4 +252,26 @@ func getMentions(usernames []string, people []p.Person) []Mention {
 	}
 
 	return mentions
+}
+
+func getLikesNumberPerComment(likes []HuddleCommentLike, commentId uint) []string {
+	var usersLiked []string
+
+	for _, like := range likes {
+		if like.CommentId == commentId {
+			usersLiked = append(usersLiked, like.Sender)
+		}
+	}
+
+	return usersLiked
+}
+
+func liked(usersLiked []string, username string) int {
+	for _, userLiked := range usersLiked {
+		if userLiked == username {
+			return 1
+		}
+	}
+
+	return 0
 }

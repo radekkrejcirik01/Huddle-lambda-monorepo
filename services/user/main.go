@@ -23,6 +23,7 @@ func init() {
 		&huddles.Huddle{},
 		&huddles.HuddleNotification{},
 		&huddles.HuddleComment{},
+		&huddles.HuddleCommentLike{},
 		&people.PeopleNotification{},
 		&users.User{},
 	); err != nil {

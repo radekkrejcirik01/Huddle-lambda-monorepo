@@ -20,7 +20,7 @@ func Create() *fiber.App {
 	app.Get("/huddle/interactions/:huddleId",
 		controller.GetHuddleInteractions,
 	)
-	app.Get("/huddle/comments/:huddleId",
+	app.Get("/huddle/comments/:huddleId/:username",
 		controller.GetHuddleComments,
 	)
 
@@ -32,6 +32,7 @@ func Create() *fiber.App {
 	app.Post("/huddle/confirm", controller.ConfirmHuddle)
 	app.Post("/huddle/comment", controller.AddHuddleComment)
 	app.Post("/huddle/comment/mention", controller.AddHuddleMentionComment)
+	app.Post("/huddle/comment/like", controller.LikeHuddleComment)
 
 	app.Put("/person", controller.AcceptPersonInvite)
 	app.Put("/huddle", controller.UpdateHuddle)
@@ -44,6 +45,9 @@ func Create() *fiber.App {
 	app.Delete("/huddle/:id", controller.DeleteHuddle)
 	app.Delete("/huddle/interaction/:username/:huddleId",
 		controller.RemoveHuddleInteraction,
+	)
+	app.Delete("/huddle/comment/like/:commentId/:sender",
+		controller.RemoveHuddleCommentLike,
 	)
 
 	return app

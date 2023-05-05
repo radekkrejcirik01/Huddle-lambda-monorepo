@@ -338,16 +338,17 @@ func AddHuddleMentionComment(c *fiber.Ctx) error {
 	})
 }
 
-// GetHuddleComments GET /huddle/comments/:huddleId
+// GetHuddleComments GET /huddle/comments/:huddleId/:username
 func GetHuddleComments(c *fiber.Ctx) error {
 	huddleId := c.Params("huddleId")
+	username := c.Params("username")
 
 	id, err := strconv.Atoi(huddleId)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	comments, mentions, err := huddles.GetHuddleComments(database.DB, uint(id))
+	comments, mentions, err := huddles.GetHuddleComments(database.DB, uint(id), username)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
@@ -360,5 +361,52 @@ func GetHuddleComments(c *fiber.Ctx) error {
 		Message:  "Huddle comments successfully got",
 		Data:     comments,
 		Mentions: mentions,
+	})
+}
+
+// LikeHuddleComment POST /huddle/comment/like
+func LikeHuddleComment(c *fiber.Ctx) error {
+	t := &huddles.Like{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := huddles.LikeHuddleComment(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Huddle comment successfully liked",
+	})
+}
+
+// RemoveHuddleCommentLike DELETE /huddle/comment/like/:commentId/:sender
+func RemoveHuddleCommentLike(c *fiber.Ctx) error {
+	commentId := c.Params("commentId")
+	sender := c.Params("sender")
+
+	id, err := strconv.Atoi(commentId)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	if err := huddles.RemoveHuddleCommentLike(database.DB, id, sender); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Huddle comment like removed",
 	})
 }

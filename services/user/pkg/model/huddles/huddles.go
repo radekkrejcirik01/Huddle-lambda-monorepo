@@ -33,16 +33,17 @@ type NewHuddle struct {
 }
 
 type HuddleData struct {
-	Id           uint   `json:"id"`
-	CreatedBy    string `json:"createdBy"`
-	Name         string `json:"name"`
-	ProfilePhoto string `json:"profilePhoto"`
-	What         string `json:"what"`
-	Where        string `json:"where"`
-	When         string `json:"when"`
-	Interacted   int    `json:"interacted,omitempty"`
-	Confirmed    int    `json:"confirmed,omitempty"`
-	Canceled     int    `json:"canceled,omitempty"`
+	Id             uint   `json:"id"`
+	CreatedBy      string `json:"createdBy"`
+	Name           string `json:"name"`
+	ProfilePhoto   string `json:"profilePhoto"`
+	What           string `json:"what"`
+	Where          string `json:"where"`
+	When           string `json:"when"`
+	Interacted     int    `json:"interacted,omitempty"`
+	Confirmed      int    `json:"confirmed,omitempty"`
+	Canceled       int    `json:"canceled,omitempty"`
+	CommentsNumber int    `json:"commentsNumber,omitempty"`
 }
 
 type Invite struct {
@@ -203,19 +204,30 @@ func GetHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
 		return huddlesData, err
 	}
 
+	var comments []HuddleComment
+	if err := db.
+		Table("huddles_comments").
+		Where("huddle_id IN ?", huddlesIds).
+		Find(&comments).
+		Error; err != nil {
+		return huddlesData, err
+	}
+
 	for _, huddle := range huddles {
 		profileInfo := GetProfileInfoFromProfiles(profiles, huddle.CreatedBy)
 		interacted := GetInteraction(interactedHuddlesIds, huddle.Id)
+		commentsNumber := getCommentsNumber(comments, huddle.Id)
 
 		huddlesData = append(huddlesData, HuddleData{
-			Id:           huddle.Id,
-			CreatedBy:    huddle.CreatedBy,
-			Name:         profileInfo.Firstname,
-			ProfilePhoto: profileInfo.ProfilePhoto,
-			What:         huddle.What,
-			Where:        huddle.Where,
-			When:         huddle.When,
-			Interacted:   interacted,
+			Id:             huddle.Id,
+			CreatedBy:      huddle.CreatedBy,
+			Name:           profileInfo.Firstname,
+			ProfilePhoto:   profileInfo.ProfilePhoto,
+			What:           huddle.What,
+			Where:          huddle.Where,
+			When:           huddle.When,
+			Interacted:     interacted,
+			CommentsNumber: commentsNumber,
 		})
 
 	}
@@ -353,4 +365,16 @@ func GetInteraction(interactedHuddlesIds []uint, huddleId uint) int {
 	}
 
 	return 0
+}
+
+func getCommentsNumber(comments []HuddleComment, huddlesId uint) int {
+	commentsNumber := 0
+
+	for _, comment := range comments {
+		if comment.HuddleId == huddlesId {
+			commentsNumber = commentsNumber + 1
+		}
+	}
+
+	return commentsNumber
 }
