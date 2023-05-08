@@ -62,41 +62,9 @@ func GetUser(db *gorm.DB, username string) (UserGet, error) {
 
 	var huddlesCount int64 = 64
 
-	var notificationsCount int64
-	notificationsCountQuery :=
-		`
-			SELECT COUNT(*) FROM (SELECT
-							id
-						FROM
-							notifications_people 
-						WHERE
-							receiver = ? AND seen = 0
-						UNION ALL
-						SELECT
-							id
-						FROM
-							notifications_notify
-						WHERE
-							receiver = ? AND seen = 0
-						UNION ALL
-						SELECT
-							id
-						FROM
-							notifications_huddles
-						WHERE
-							receiver = ? AND seen = 0) T
-		`
-	if err := db.
-		Raw(notificationsCountQuery, username, username, username).
-		First(&notificationsCount).Error; err != nil {
-		return userGet, err
-	}
+	var notificationsCount int64 = 1
 
-	var unreadMessagesCount int64
-	queryUnreadMessageCount := `SELECT COUNT(*) FROM (SELECT id AS message_id FROM messages WHERE id IN( SELECT MAX(id) FROM messages WHERE conversation_id IN( SELECT conversation_id FROM people_in_conversations WHERE username = '` + username + `') GROUP BY conversation_id)) T1 WHERE T1.message_id NOT IN( SELECT message_id FROM last_read_messages WHERE username = '` + username + `') GROUP BY message_id`
-	if err := db.Raw(queryUnreadMessageCount).Scan(&unreadMessagesCount).Error; err != nil {
-		return userGet, err
-	}
+	var unreadMessagesCount int64 = 1
 
 	userGet = UserGet{
 		User:           user,
