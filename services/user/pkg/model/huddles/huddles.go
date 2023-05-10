@@ -1,6 +1,8 @@
 package huddles
 
 import (
+	"errors"
+
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
@@ -252,15 +254,16 @@ func PostHuddleAgain(db *gorm.DB, t *PostAgain) error {
 }
 
 // Get Huddle from huddles table by id
-func GetHuddleById(db *gorm.DB, id uint) (HuddleData, error) {
+func GetHuddleById(db *gorm.DB, id uint, username string) (HuddleData, error) {
 	var huddleData HuddleData
+	var interacted int
 
 	var huddle Huddle
 	if err := db.
 		Table("huddles").
 		Where("id = ?", id).
 		First(&huddle).Error; err != nil {
-		return huddleData, err
+		return HuddleData{}, err
 	}
 
 	var profile p.Person
@@ -269,7 +272,24 @@ func GetHuddleById(db *gorm.DB, id uint) (HuddleData, error) {
 		Where("username = ?", huddle.CreatedBy).
 		First(&profile).
 		Error; err != nil {
-		return huddleData, err
+		return HuddleData{}, err
+	}
+
+	if huddle.CreatedBy != username {
+		var interaction HuddleInteracted
+		err := db.
+			Table("huddles_interacted").
+			Where("sender = ? AND huddle_id = ?", username, id).
+			First(&interaction).
+			Error
+
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return HuddleData{}, err
+		}
+
+		if err == nil {
+			interacted = 1
+		}
 	}
 
 	huddleData = HuddleData{
@@ -280,7 +300,7 @@ func GetHuddleById(db *gorm.DB, id uint) (HuddleData, error) {
 		What:         huddle.What,
 		Where:        huddle.Where,
 		When:         huddle.When,
-		Interacted:   1,
+		Interacted:   interacted,
 		Confirmed:    huddle.Confirmed,
 		Canceled:     huddle.Canceled,
 	}

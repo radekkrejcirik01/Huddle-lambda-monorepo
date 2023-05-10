@@ -3,6 +3,7 @@ package notifications
 import (
 	"time"
 
+	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"gorm.io/gorm"
 )
 
@@ -10,6 +11,9 @@ const timeFormat = "2006-01-02 15:04:05"
 
 const huddleInteractedType = "huddle_interacted"
 const huddleConfirmedType = "huddle_confirmed"
+const huddleCommentedType = "huddle_commented"
+const huddleMentionCommentedType = "huddle_mention_commented"
+const huddleCommentLikedType = "comment_liked"
 
 type Notification struct {
 	HuddleId *uint
@@ -19,12 +23,6 @@ type Notification struct {
 	Accepted *int
 	Seen     int
 	Created  int64
-}
-
-type Profile struct {
-	Username     string
-	Firstname    string
-	ProfilePhoto string
 }
 
 type NotificationData struct {
@@ -45,14 +43,12 @@ type GetHuddles struct {
 	What string
 }
 
-// Get notifications from notifications_people, notifications_notify and
-// notifications_huddles tables
+// Get notifications from notifications_people and notifications_huddles tables
 func GetNotifications(db *gorm.DB, username string) ([]NotificationData, error) {
 	var notificationsData []NotificationData
 
 	db.Transaction(func(tx *gorm.DB) error {
 		tx.Table("notifications_people").Where("receiver = ?", username).Update("seen", 1)
-		tx.Table("notifications_notify").Where("receiver = ?", username).Update("seen", 1)
 		tx.Table("notifications_huddles").Where("receiver = ?", username).Update("seen", 1)
 		return nil
 	})
@@ -62,13 +58,11 @@ func GetNotifications(db *gorm.DB, username string) ([]NotificationData, error) 
 	query := `
 			(SELECT NULL AS huddle_id, sender, receiver, type, accepted, seen, created FROM notifications_people WHERE receiver = ?
 			UNION
-			SELECT NULL AS huddle_id, sender, receiver, type, NULL AS accepted, seen, created FROM notifications_notify WHERE receiver = ?
-			UNION
 			SELECT huddle_id, sender, receiver, type, NULL AS accepted, seen, created FROM notifications_huddles WHERE receiver = ?)
-			LIMIT ?
+			ORDER BY created DESC LIMIT ?
 			`
 
-	if err := db.Raw(query, username, username, username, 10).Scan(&notifications).Error; err != nil {
+	if err := db.Raw(query, username, username, 10).Find(&notifications).Error; err != nil {
 		return notificationsData, err
 	}
 
@@ -93,7 +87,7 @@ func GetNotifications(db *gorm.DB, username string) ([]NotificationData, error) 
 
 	usernames := getUsernames(notifications)
 
-	var profiles []Profile
+	var profiles []p.Person
 	if err := db.
 		Table("users").
 		Select("username, firstname, profile_photo").
@@ -104,36 +98,37 @@ func GetNotifications(db *gorm.DB, username string) ([]NotificationData, error) 
 	}
 
 	for i, notification := range notifications {
-		for _, profile := range profiles {
-			if profile.Username == notification.Sender {
-				time := time.Unix(notification.Created, 0).Format(timeFormat)
+		var what *string
+		var confirmed *int
 
-				var what *string
-				var confirmed *int
-				if notification.Type == huddleInteractedType {
-					what = getWhat(whats, *notification.HuddleId)
-					confirmed = getConfirmed(confirmedHuddles, *notification.HuddleId)
-				}
-				if notification.Type == huddleConfirmedType {
-					what = getWhat(whats, *notification.HuddleId)
-				}
+		name, profilePhoto := getProfileInfo(profiles, notification.Sender)
 
-				notificationsData = append(notificationsData, NotificationData{
-					Id:           uint(i),
-					HuddleId:     notification.HuddleId,
-					Sender:       notification.Sender,
-					SenderName:   profile.Firstname,
-					ProfilePhoto: profile.ProfilePhoto,
-					Type:         notification.Type,
-					What:         what,
-					Accepted:     notification.Accepted,
-					Confirmed:    confirmed,
-					Created:      time,
-				})
-
-				break
-			}
+		if notification.Type == huddleInteractedType {
+			what = getWhat(whats, *notification.HuddleId)
+			confirmed = getConfirmed(confirmedHuddles, *notification.HuddleId)
 		}
+
+		if notification.Type == huddleConfirmedType ||
+			notification.Type == huddleCommentedType ||
+			notification.Type == huddleMentionCommentedType ||
+			notification.Type == huddleCommentLikedType {
+			what = getWhat(whats, *notification.HuddleId)
+		}
+
+		time := time.Unix(notification.Created, 0).Format(timeFormat)
+
+		notificationsData = append(notificationsData, NotificationData{
+			Id:           uint(i),
+			HuddleId:     notification.HuddleId,
+			Sender:       notification.Sender,
+			SenderName:   name,
+			ProfilePhoto: profilePhoto,
+			Type:         notification.Type,
+			What:         what,
+			Accepted:     notification.Accepted,
+			Confirmed:    confirmed,
+			Created:      time,
+		})
 	}
 
 	return notificationsData, nil
@@ -155,6 +150,22 @@ func getUsernames(notifications []Notification) []string {
 	}
 
 	return usernames
+}
+
+func getProfileInfo(profiles []p.Person, username string) (string, string) {
+	var name string
+	var profilePhoto string
+
+	for _, profile := range profiles {
+		if profile.Username == username {
+			name = profile.Firstname
+			profilePhoto = profile.ProfilePhoto
+
+			break
+		}
+	}
+
+	return name, profilePhoto
 }
 
 func getWhat(huddles []GetHuddles, huddleId uint) *string {

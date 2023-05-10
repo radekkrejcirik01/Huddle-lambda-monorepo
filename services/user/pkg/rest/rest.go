@@ -14,17 +14,13 @@ func Create() *fiber.App {
 	app.Get("/notifications/:username", controller.GetNotifications)
 	app.Get("/people/:username", controller.GetPeople)
 	app.Get("/person/:user1/:user2", controller.GetPersonInvite)
-	app.Get("/huddles/user/:username", controller.GetUserHuddles)
 	app.Get("/huddles/:username", controller.GetHuddles)
-	app.Get("/huddle/:id", controller.GetHuddleById)
-	app.Get("/huddle/interactions/:huddleId",
-		controller.GetHuddleInteractions,
-	)
-	app.Get("/huddle/comments/:huddleId/:username",
-		controller.GetHuddleComments,
-	)
+	app.Get("/user-huddles/:username", controller.GetUserHuddles)
+	app.Get("/huddle/:id/:username", controller.GetHuddleById)
+	app.Get("/interactions/:id", controller.GetHuddleInteractions)
+	app.Get("/comments/:huddleId/:username", controller.GetHuddleComments)
 	app.Get("/chats/:username", controller.GetChats)
-	app.Get("/messages/:conversationId", controller.GetMessages)
+	app.Get("/conversation/:conversationId", controller.GetConversation)
 	app.Get("/messages/:user1/:user2", controller.GetMessagesByUsernames)
 
 	app.Post("/user", controller.CreateUser)
@@ -47,10 +43,10 @@ func Create() *fiber.App {
 
 	app.Delete("/person/:user1/:user2", controller.RemovePerson)
 	app.Delete("/huddle/:id", controller.DeleteHuddle)
-	app.Delete("/huddle/interaction/:username/:huddleId",
+	app.Delete("/interaction/:id/:username",
 		controller.RemoveHuddleInteraction,
 	)
-	app.Delete("/huddle/comment/like/:commentId/:sender",
+	app.Delete("/like/:id/:sender",
 		controller.RemoveHuddleCommentLike,
 	)
 

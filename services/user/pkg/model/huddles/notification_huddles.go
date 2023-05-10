@@ -5,7 +5,7 @@ type HuddleNotification struct {
 	HuddleId uint
 	Sender   string
 	Receiver string
-	Type     string `gorm:"type:enum('huddle_interacted', 'huddle_confirmed')"`
+	Type     string `gorm:"type:enum('huddle_interacted', 'huddle_confirmed', 'huddle_commented', 'huddle_mention_commented', 'comment_liked')"`
 	Seen     int    `gorm:"default:0"`
 	Created  int64  `gorm:"autoCreateTime"`
 }

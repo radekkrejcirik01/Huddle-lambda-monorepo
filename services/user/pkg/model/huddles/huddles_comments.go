@@ -9,6 +9,8 @@ import (
 )
 
 const timeFormat = "2006-01-02 15:04:05"
+const huddleCommentedType = "huddle_commented"
+const huddleMentionCommentedType = "huddle_mention_commented"
 
 type HuddleComment struct {
 	Id       uint `gorm:"primary_key;auto_increment;not_null"`
@@ -70,6 +72,17 @@ func AddHuddleComment(db *gorm.DB, t *HuddleComment) error {
 		return nil
 	}
 
+	commentNotification := HuddleNotification{
+		HuddleId: t.HuddleId,
+		Sender:   t.Sender,
+		Receiver: createdBy,
+		Type:     huddleCommentedType,
+	}
+
+	if err := db.Table("notifications_huddles").Create(&commentNotification).Error; err != nil {
+		return err
+	}
+
 	if err := db.
 		Table("users").
 		Select("firstname").
@@ -108,6 +121,17 @@ func AddHuddleMentionComment(db *gorm.DB, t *MentionComment) error {
 	}
 
 	if err := db.Table("huddles_comments").Create(&comment).Error; err != nil {
+		return err
+	}
+
+	commentNotification := HuddleNotification{
+		HuddleId: t.HuddleId,
+		Sender:   t.Sender,
+		Receiver: t.Receiver,
+		Type:     huddleMentionCommentedType,
+	}
+
+	if err := db.Table("notifications_huddles").Create(&commentNotification).Error; err != nil {
 		return err
 	}
 

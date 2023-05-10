@@ -5,6 +5,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const huddleCommentLikedType = "comment_liked"
+
 type HuddleCommentLike struct {
 	Id        uint `gorm:"primary_key;auto_increment;not_null"`
 	Sender    string
@@ -34,6 +36,17 @@ func LikeHuddleComment(db *gorm.DB, t *Like) error {
 	}
 
 	if err := db.Table("huddles_comments_likes").Create(&like).Error; err != nil {
+		return err
+	}
+
+	commentNotification := HuddleNotification{
+		HuddleId: t.HuddleId,
+		Sender:   t.Sender,
+		Receiver: t.Receiver,
+		Type:     huddleCommentLikedType,
+	}
+
+	if err := db.Table("notifications_huddles").Create(&commentNotification).Error; err != nil {
 		return err
 	}
 

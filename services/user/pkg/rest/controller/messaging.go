@@ -53,8 +53,8 @@ func SendMessage(c *fiber.Ctx) error {
 	})
 }
 
-// GetMessages GET /messages/:conversationId
-func GetMessages(c *fiber.Ctx) error {
+// GetMessages GET /conversation/:conversationId
+func GetConversation(c *fiber.Ctx) error {
 	conversationId := c.Params("conversationId")
 
 	id, parseErr := strconv.Atoi(conversationId)
@@ -62,7 +62,7 @@ func GetMessages(c *fiber.Ctx) error {
 		fmt.Println(parseErr)
 	}
 
-	messages, err := messaging.GetMessages(database.DB, id)
+	messages, err := messaging.GetConversation(database.DB, id)
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{

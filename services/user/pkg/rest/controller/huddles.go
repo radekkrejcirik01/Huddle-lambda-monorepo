@@ -33,7 +33,7 @@ func AddHuddle(c *fiber.Ctx) error {
 	})
 }
 
-// GetUserHuddles GET /huddles/user/:username
+// GetUserHuddles GET /user-huddles/:username
 func GetUserHuddles(c *fiber.Ctx) error {
 	username := c.Params("username")
 
@@ -121,16 +121,17 @@ func PostHuddleAgain(c *fiber.Ctx) error {
 	})
 }
 
-// GetHuddleById GET /huddle/:id
+// GetHuddleById GET /huddle/:id/:username
 func GetHuddleById(c *fiber.Ctx) error {
 	id := c.Params("id")
+	username := c.Params("username")
 
 	huddleId, parseErr := strconv.Atoi(id)
 	if parseErr != nil {
 		fmt.Println(parseErr)
 	}
 
-	huddle, err := huddles.GetHuddleById(database.DB, uint(huddleId))
+	huddle, err := huddles.GetHuddleById(database.DB, uint(huddleId), username)
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -192,17 +193,15 @@ func HuddleInteract(c *fiber.Ctx) error {
 	})
 }
 
-// GetHuddleInteractions GET /huddle/interactions/:huddleId
+// GetHuddleInteractions GET /interactions/:huddleId
 func GetHuddleInteractions(c *fiber.Ctx) error {
-	huddleId := c.Params("huddleId")
-
-	id, parseErr := strconv.Atoi(huddleId)
+	id, parseErr := strconv.Atoi(c.Params("id"))
 	if parseErr != nil {
 		fmt.Println(parseErr)
 	}
 
 	huddleInteractions, confirmedUser, getErr :=
-		huddles.GetHuddleInteractions(database.DB, uint(id))
+		huddles.GetHuddleInteractions(database.DB, id)
 
 	if getErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -243,15 +242,13 @@ func ConfirmHuddle(c *fiber.Ctx) error {
 	})
 }
 
-// RemoveHuddleInteraction DELETE /huddle/interaction
+// RemoveHuddleInteraction DELETE /interaction/:id/:username
 func RemoveHuddleInteraction(c *fiber.Ctx) error {
-	username := c.Params("username")
-	huddleId := c.Params("huddleId")
-
-	id, err := strconv.Atoi(huddleId)
+	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		fmt.Println(err)
 	}
+	username := c.Params("username")
 
 	if err := huddles.RemoveHuddleInteraction(database.DB, username, uint(id)); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -338,15 +335,13 @@ func AddHuddleMentionComment(c *fiber.Ctx) error {
 	})
 }
 
-// GetHuddleComments GET /huddle/comments/:huddleId/:username
+// GetHuddleComments GET /comments/:huddleId/:username
 func GetHuddleComments(c *fiber.Ctx) error {
-	huddleId := c.Params("huddleId")
-	username := c.Params("username")
-
-	id, err := strconv.Atoi(huddleId)
+	id, err := strconv.Atoi(c.Params("huddleId"))
 	if err != nil {
 		fmt.Println(err)
 	}
+	username := c.Params("username")
 
 	comments, mentions, err := huddles.GetHuddleComments(database.DB, uint(id), username)
 	if err != nil {
@@ -388,15 +383,13 @@ func LikeHuddleComment(c *fiber.Ctx) error {
 	})
 }
 
-// RemoveHuddleCommentLike DELETE /huddle/comment/like/:commentId/:sender
+// RemoveHuddleCommentLike DELETE /like/:id/:sender
 func RemoveHuddleCommentLike(c *fiber.Ctx) error {
-	commentId := c.Params("commentId")
-	sender := c.Params("sender")
-
-	id, err := strconv.Atoi(commentId)
+	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		fmt.Println(err)
 	}
+	sender := c.Params("sender")
 
 	if err := huddles.RemoveHuddleCommentLike(database.DB, id, sender); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{

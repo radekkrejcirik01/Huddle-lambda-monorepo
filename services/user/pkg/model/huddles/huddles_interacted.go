@@ -68,7 +68,7 @@ func HuddleInteract(db *gorm.DB, t *HuddleNotification) error {
 }
 
 // Get Huddle interactions from huddles_interacted table
-func GetHuddleInteractions(db *gorm.DB, huddleId uint) ([]UserInteracted, *UserInteracted, error) {
+func GetHuddleInteractions(db *gorm.DB, huddleId int) ([]UserInteracted, *UserInteracted, error) {
 	var usersInteracted []UserInteracted
 
 	var interactions []Interaction

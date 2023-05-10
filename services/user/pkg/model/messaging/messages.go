@@ -100,8 +100,8 @@ func SendMessage(db *gorm.DB, t *Send) error {
 	return service.SendNotification(&notification)
 }
 
-// Get messages from messages table
-func GetMessages(db *gorm.DB, conversaionId int) ([]MessageData, error) {
+// Get conversation messages from messages table
+func GetConversation(db *gorm.DB, conversaionId int) ([]MessageData, error) {
 	var message []MessageData
 
 	if err := db.
