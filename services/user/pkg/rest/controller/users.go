@@ -30,7 +30,7 @@ func CreateUser(c *fiber.Ctx) error {
 	})
 }
 
-// GetUser GET /user
+// GetUser GET /user/:username
 func GetUser(c *fiber.Ctx) error {
 	username := c.Params("username")
 
@@ -46,6 +46,25 @@ func GetUser(c *fiber.Ctx) error {
 		Status:  "succes",
 		Message: "User succesfully got",
 		Data:    user,
+	})
+}
+
+// GetPeopleNumber GET /people-number/:username
+func GetPeopleNumber(c *fiber.Ctx) error {
+	username := c.Params("username")
+
+	number, err := users.GetPeopleNumber(database.DB, username)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(PeopleNumberResponse{
+		Status:       "succes",
+		Message:      "People number succesfully got",
+		PeopleNumber: number,
 	})
 }
 

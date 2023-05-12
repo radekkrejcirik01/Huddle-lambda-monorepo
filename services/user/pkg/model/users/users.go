@@ -20,11 +20,10 @@ type User struct {
 }
 
 type UserGet struct {
-	User           User  `json:"user"`
-	People         int64 `json:"people"`
-	Huddles        int64 `json:"huddles"`
-	Notifications  int64 `json:"notifications"`
-	UnreadMessages int64 `json:"unreadMessages"`
+	User                 User  `json:"user"`
+	PeopleNumber         int64 `json:"peopleNumber"`
+	NotificationsNumber  int64 `json:"notificationsNumber"`
+	UnreadMessagesNumber int64 `json:"unreadMessagesNumber"`
 }
 
 func (User) TableName() string {
@@ -49,32 +48,49 @@ func GetUser(db *gorm.DB, username string) (UserGet, error) {
 	var user User
 	err := db.Table("users").Where("username = ?", username).First(&user).Error
 	if err != nil {
-		return userGet, err
+		return UserGet{}, err
 	}
 
-	var peopleCount int64
+	var peopleNumber int64
 	if err := db.
 		Table("invites").
 		Where("(sender = ? OR receiver = ?) AND accepted = 1", username, username).
-		Count(&peopleCount).Error; err != nil {
-		return userGet, err
+		Count(&peopleNumber).Error; err != nil {
+		return UserGet{}, err
 	}
 
-	var huddlesCount int64 = 64
+	var notificationsNumber int64
+	if err := db.
+		Table("notifications").
+		Where("receiver = ? AND seen = 0", username).
+		Count(&notificationsNumber).Error; err != nil {
+		return UserGet{}, err
+	}
 
-	var notificationsCount int64 = 1
-
-	var unreadMessagesCount int64 = 1
+	var unreadMessagesNumber int64 = 1
 
 	userGet = UserGet{
-		User:           user,
-		People:         peopleCount,
-		Huddles:        huddlesCount,
-		Notifications:  notificationsCount,
-		UnreadMessages: unreadMessagesCount,
+		User:                 user,
+		PeopleNumber:         peopleNumber,
+		NotificationsNumber:  notificationsNumber,
+		UnreadMessagesNumber: unreadMessagesNumber,
 	}
 
 	return userGet, nil
+}
+
+// Get people number from invites table
+func GetPeopleNumber(db *gorm.DB, username string) (int64, error) {
+	var peopleNumber int64
+
+	if err := db.
+		Table("invites").
+		Where("(sender = ? OR receiver = ?) AND accepted = 1", username, username).
+		Count(&peopleNumber).Error; err != nil {
+		return 0, err
+	}
+
+	return peopleNumber, nil
 }
 
 func UplaodProfilePhoto(db *gorm.DB, t *UplaodProfilePhotoBody) (string, error) {

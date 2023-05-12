@@ -19,6 +19,12 @@ type UserResponse struct {
 	Data    users.UserGet `json:"data,omitempty"`
 }
 
+type PeopleNumberResponse struct {
+	Status       string `json:"status"`
+	Message      string `json:"message,omitempty"`
+	PeopleNumber int64  `json:"peopleNumber,omitempty"`
+}
+
 type PeopleResponse struct {
 	Status  string          `json:"status"`
 	Message string          `json:"message,omitempty"`

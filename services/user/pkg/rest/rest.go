@@ -11,6 +11,7 @@ func Create() *fiber.App {
 
 	app.Get("/", controller.Index)
 	app.Get("/user/:username", controller.GetUser)
+	app.Get("/people-number/:username", controller.GetPeopleNumber)
 	app.Get("/notifications/:username", controller.GetNotifications)
 	app.Get("/people/:username", controller.GetPeople)
 	app.Get("/person/:user1/:user2", controller.GetPersonInvite)
