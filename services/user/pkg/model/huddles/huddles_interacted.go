@@ -1,17 +1,15 @@
 package huddles
 
 import (
+	n "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
 )
 
-const huddleInteractedType = "huddle_interacted"
-const huddleConfirmedType = "huddle_confirmed"
-
 type HuddleInteracted struct {
 	Id        uint `gorm:"primary_key;auto_increment;not_null"`
 	Sender    string
-	HuddleId  uint
+	HuddleId  int
 	Confirmed int   `gorm:"default:0"`
 	Created   int64 `gorm:"autoCreateTime"`
 }
@@ -20,27 +18,37 @@ func (HuddleInteracted) TableName() string {
 	return "huddles_interacted"
 }
 
+type Interact struct {
+	HuddleId int
+	Sender   string
+	Receiver string
+}
+
 type Interaction struct {
 	Sender    string
 	Confirmed int
 }
 
 type UserInteracted struct {
-	Id           *uint  `json:"id"`
 	Username     string `json:"username"`
 	Firstname    string `json:"name"`
 	ProfilePhoto string `json:"profilePhoto"`
 }
 
 type RemoveConfirm struct {
-	Id uint
+	Id int
 }
 
 // Add Huddle interaction to huddles_interacted table
-func HuddleInteract(db *gorm.DB, t *HuddleNotification) error {
-	t.Type = huddleInteractedType
+func HuddleInteract(db *gorm.DB, t *Interact) error {
+	notification := n.Notification{
+		Sender:   t.Sender,
+		Receiver: t.Receiver,
+		EventId:  t.HuddleId,
+		Type:     n.HuddleInteractType,
+	}
 
-	if err := db.Table("notifications_huddles").Create(&t).Error; err != nil {
+	if err := db.Table("notifications").Create(&notification).Error; err != nil {
 		return err
 	}
 
@@ -56,15 +64,16 @@ func HuddleInteract(db *gorm.DB, t *HuddleNotification) error {
 	if err := service.GetTokensByUsername(db, tokens, t.Receiver); err != nil {
 		return nil
 	}
-	hangoutNotification := service.FcmNotification{
+
+	fcmNotification := service.FcmNotification{
 		Sender:  t.Sender,
 		Type:    huddleType,
-		Body:    t.Sender + " tapped to a Huddle 👋",
+		Body:    t.Sender + " interacted with your Huddle 👋",
 		Sound:   "default",
 		Devices: *tokens,
 	}
 
-	return service.SendNotification(&hangoutNotification)
+	return service.SendNotification(&fcmNotification)
 }
 
 // Get Huddle interactions from huddles_interacted table
@@ -100,12 +109,16 @@ func GetHuddleInteractions(db *gorm.DB, huddleId int) ([]UserInteracted, *UserIn
 	return usersInteracted, confirmedUser, nil
 }
 
-// Confirm Huddle interaction, add notification to notifications_huddles table
-// and update confirmed value in huddles_interacted table
-func ConfirmHuddle(db *gorm.DB, t *HuddleNotification) error {
-	t.Type = huddleConfirmedType
+// Update confirmed value in huddles_interacted table
+func ConfirmHuddle(db *gorm.DB, t *Interact) error {
+	notification := n.Notification{
+		Sender:   t.Sender,
+		Receiver: t.Receiver,
+		EventId:  t.HuddleId,
+		Type:     n.HuddleConfirmType,
+	}
 
-	if err := db.Table("notifications_huddles").Create(&t).Error; err != nil {
+	if err := db.Table("notifications").Create(&notification).Error; err != nil {
 		return err
 	}
 
@@ -129,7 +142,8 @@ func ConfirmHuddle(db *gorm.DB, t *HuddleNotification) error {
 	if err := service.GetTokensByUsername(db, tokens, t.Receiver); err != nil {
 		return nil
 	}
-	hangoutNotification := service.FcmNotification{
+
+	fcmNotification := service.FcmNotification{
 		Sender:  t.Sender,
 		Type:    huddleType,
 		Body:    t.Sender + " confirmed a Huddle ✅",
@@ -137,7 +151,7 @@ func ConfirmHuddle(db *gorm.DB, t *HuddleNotification) error {
 		Devices: *tokens,
 	}
 
-	return service.SendNotification(&hangoutNotification)
+	return service.SendNotification(&fcmNotification)
 }
 
 // Remove Huddle interaction from huddles_interacted table

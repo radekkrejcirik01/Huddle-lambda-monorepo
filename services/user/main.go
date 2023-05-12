@@ -10,6 +10,7 @@ import (
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/database"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/huddles"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/messaging"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/users"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/rest"
@@ -20,16 +21,16 @@ var fiberLambda *fiberadapter.FiberLambda
 func init() {
 	database.Connect()
 	if err := database.DB.AutoMigrate(
+		&people.Invite{},
 		&huddles.HuddleInteracted{},
 		&huddles.Huddle{},
-		&huddles.HuddleNotification{},
 		&huddles.HuddleComment{},
 		&huddles.HuddleCommentLike{},
 		&messaging.Conversation{},
 		&messaging.Message{},
 		&messaging.PersonInConversation{},
 		&messaging.LastReadMessage{},
-		&people.PeopleNotification{},
+		&notifications.Notification{},
 		&users.User{},
 	); err != nil {
 		log.Fatal(err)

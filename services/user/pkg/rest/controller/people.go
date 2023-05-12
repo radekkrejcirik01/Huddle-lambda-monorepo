@@ -8,7 +8,7 @@ import (
 
 // AddPersonInvite POST /person
 func AddPersonInvite(c *fiber.Ctx) error {
-	t := &people.PeopleNotification{}
+	t := &people.Invite{}
 
 	if err := c.BodyParser(t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -52,7 +52,7 @@ func GetPeople(c *fiber.Ctx) error {
 
 // AcceptPersonInvite PUT /people/invite
 func AcceptPersonInvite(c *fiber.Ctx) error {
-	t := &people.PeopleNotification{}
+	t := &people.Invite{}
 
 	if err := c.BodyParser(t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{

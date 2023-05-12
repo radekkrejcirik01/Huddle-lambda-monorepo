@@ -54,8 +54,8 @@ func GetUser(db *gorm.DB, username string) (UserGet, error) {
 
 	var peopleCount int64
 	if err := db.
-		Table("notifications_people").
-		Where("(sender = ? OR receiver = ?) AND type = 'person_invite' AND accepted = 1", username, username).
+		Table("invites").
+		Where("(sender = ? OR receiver = ?) AND accepted = 1", username, username).
 		Count(&peopleCount).Error; err != nil {
 		return userGet, err
 	}

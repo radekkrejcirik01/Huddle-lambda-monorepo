@@ -171,7 +171,7 @@ func DeleteHuddle(c *fiber.Ctx) error {
 
 // HuddleInteract POST /huddle/interaction
 func HuddleInteract(c *fiber.Ctx) error {
-	t := &huddles.HuddleNotification{}
+	t := &huddles.Interact{}
 
 	if err := c.BodyParser(t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -220,7 +220,7 @@ func GetHuddleInteractions(c *fiber.Ctx) error {
 
 // ConfirmHuddle POST /huddle/confirm
 func ConfirmHuddle(c *fiber.Ctx) error {
-	t := &huddles.HuddleNotification{}
+	t := &huddles.Interact{}
 
 	if err := c.BodyParser(t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{

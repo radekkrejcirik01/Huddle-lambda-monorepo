@@ -3,19 +3,18 @@ package huddles
 import (
 	"time"
 
+	n "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
 )
 
 const timeFormat = "2006-01-02 15:04:05"
-const huddleCommentedType = "huddle_commented"
-const huddleMentionCommentedType = "huddle_mention_commented"
 
 type HuddleComment struct {
 	Id       uint `gorm:"primary_key;auto_increment;not_null"`
 	Sender   string
-	HuddleId uint
+	HuddleId int
 	Message  string
 	Mention  *string
 	Created  int64 `gorm:"autoCreateTime"`
@@ -28,7 +27,7 @@ func (HuddleComment) TableName() string {
 type MentionComment struct {
 	Sender   string
 	Receiver string
-	HuddleId uint
+	HuddleId int
 	Message  string
 }
 
@@ -39,7 +38,7 @@ type Mention struct {
 }
 
 type HuddleCommentData struct {
-	Id           uint     `json:"id"`
+	Id           int      `json:"id"`
 	Sender       string   `json:"sender"`
 	Name         string   `json:"name"`
 	ProfilePhoto string   `json:"profilePhoto,omitempty"`
@@ -72,14 +71,13 @@ func AddHuddleComment(db *gorm.DB, t *HuddleComment) error {
 		return nil
 	}
 
-	commentNotification := HuddleNotification{
-		HuddleId: t.HuddleId,
+	notification := n.Notification{
+		EventId:  int(t.Id),
 		Sender:   t.Sender,
 		Receiver: createdBy,
-		Type:     huddleCommentedType,
+		Type:     n.CommentType,
 	}
-
-	if err := db.Table("notifications_huddles").Create(&commentNotification).Error; err != nil {
+	if err := db.Table("notifications").Create(&notification).Error; err != nil {
 		return err
 	}
 
@@ -97,7 +95,7 @@ func AddHuddleComment(db *gorm.DB, t *HuddleComment) error {
 		return nil
 	}
 
-	notification := service.FcmNotification{
+	fcmNotification := service.FcmNotification{
 		Sender:  t.Sender,
 		Type:    "comment",
 		Title:   name + " added a comment",
@@ -106,7 +104,7 @@ func AddHuddleComment(db *gorm.DB, t *HuddleComment) error {
 		Devices: tokens,
 	}
 
-	return service.SendNotification(&notification)
+	return service.SendNotification(&fcmNotification)
 }
 
 // Add Huddle mention comment to huddles_comments table
@@ -124,14 +122,17 @@ func AddHuddleMentionComment(db *gorm.DB, t *MentionComment) error {
 		return err
 	}
 
-	commentNotification := HuddleNotification{
-		HuddleId: t.HuddleId,
-		Sender:   t.Sender,
-		Receiver: t.Receiver,
-		Type:     huddleMentionCommentedType,
+	if t.Sender == t.Receiver {
+		return nil
 	}
 
-	if err := db.Table("notifications_huddles").Create(&commentNotification).Error; err != nil {
+	notification := n.Notification{
+		EventId:  int(comment.Id),
+		Sender:   t.Sender,
+		Receiver: t.Receiver,
+		Type:     n.CommentMentionType,
+	}
+	if err := db.Table("notifications").Create(&notification).Error; err != nil {
 		return err
 	}
 
@@ -149,7 +150,7 @@ func AddHuddleMentionComment(db *gorm.DB, t *MentionComment) error {
 		return nil
 	}
 
-	notification := service.FcmNotification{
+	fcmNotification := service.FcmNotification{
 		Sender:  t.Sender,
 		Type:    "comment",
 		Title:   name + " mentioned you",
@@ -158,7 +159,7 @@ func AddHuddleMentionComment(db *gorm.DB, t *MentionComment) error {
 		Devices: tokens,
 	}
 
-	return service.SendNotification(&notification)
+	return service.SendNotification(&fcmNotification)
 }
 
 // Get Huddle comments from huddles_comments table
@@ -195,18 +196,20 @@ func GetHuddleComments(db *gorm.DB, huddleId uint, username string) ([]HuddleCom
 	}
 
 	for _, comment := range huddleComments {
-		user := getCommentUser(comment.Sender, people)
-		time := time.Unix(comment.Created, 0).Format(timeFormat)
 		var mention *Mention
-		usersLiked := getLikesNumberPerComment(likes, comment.Id)
+
+		user := getCommentUser(comment.Sender, people)
+		usersLiked := getLikesNumberPerComment(likes, int(comment.Id))
 		liked := liked(usersLiked, username)
 
 		if comment.Mention != nil {
 			mention = getMention(*comment.Mention, people)
 		}
 
+		time := time.Unix(comment.Created, 0).Format(timeFormat)
+
 		comments = append(comments, HuddleCommentData{
-			Id:           comment.Id,
+			Id:           int(comment.Id),
 			Sender:       comment.Sender,
 			Name:         user.Firstname,
 			ProfilePhoto: user.ProfilePhoto,
@@ -278,7 +281,7 @@ func getMentions(usernames []string, people []p.Person) []Mention {
 	return mentions
 }
 
-func getLikesNumberPerComment(likes []HuddleCommentLike, commentId uint) []string {
+func getLikesNumberPerComment(likes []HuddleCommentLike, commentId int) []string {
 	var usersLiked []string
 
 	for _, like := range likes {

@@ -1,17 +1,16 @@
 package huddles
 
 import (
+	n "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
 )
 
-const huddleCommentLikedType = "comment_liked"
-
 type HuddleCommentLike struct {
 	Id        uint `gorm:"primary_key;auto_increment;not_null"`
 	Sender    string
-	CommentId uint
-	HuddleId  uint
+	CommentId int
+	HuddleId  int
 }
 
 func (HuddleCommentLike) TableName() string {
@@ -21,8 +20,8 @@ func (HuddleCommentLike) TableName() string {
 type Like struct {
 	Sender    string
 	Receiver  string
-	CommentId uint
-	HuddleId  uint
+	CommentId int
+	HuddleId  int
 }
 
 // Add Huddle comment like to huddles_comments_likes table
@@ -39,14 +38,14 @@ func LikeHuddleComment(db *gorm.DB, t *Like) error {
 		return err
 	}
 
-	commentNotification := HuddleNotification{
-		HuddleId: t.HuddleId,
+	notification := n.Notification{
+		EventId:  int(like.Id),
 		Sender:   t.Sender,
 		Receiver: t.Receiver,
-		Type:     huddleCommentLikedType,
+		Type:     n.CommentLikeType,
 	}
 
-	if err := db.Table("notifications_huddles").Create(&commentNotification).Error; err != nil {
+	if err := db.Table("notifications").Create(&notification).Error; err != nil {
 		return err
 	}
 
@@ -64,7 +63,7 @@ func LikeHuddleComment(db *gorm.DB, t *Like) error {
 		return nil
 	}
 
-	notification := service.FcmNotification{
+	fcmNotification := service.FcmNotification{
 		Sender:  t.Sender,
 		Type:    "comment",
 		Body:    name + " liked your comment",
@@ -72,7 +71,7 @@ func LikeHuddleComment(db *gorm.DB, t *Like) error {
 		Devices: tokens,
 	}
 
-	return service.SendNotification(&notification)
+	return service.SendNotification(&fcmNotification)
 }
 
 // Remove Huddle comment like from huddles_comments_likes table
