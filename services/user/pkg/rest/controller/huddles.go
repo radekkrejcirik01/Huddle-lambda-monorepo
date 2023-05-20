@@ -386,6 +386,30 @@ func LikeHuddleComment(c *fiber.Ctx) error {
 	})
 }
 
+// LikeHuddleComment POST /likes/:commentId/lastId?
+func GetCommentLikes(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("commentId"))
+	if err != nil {
+		fmt.Println(err)
+	}
+	lastId := c.Params("lastId")
+
+	profiles, err := huddles.GetCommentLikes(database.DB, id, lastId)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(GetHuddleCommentsLikesResponse{
+		Status:  "success",
+		Message: "Huddle comment likes successfully got",
+		Data:    profiles,
+	})
+}
+
 // RemoveHuddleCommentLike DELETE /like/:id/:sender
 func RemoveHuddleCommentLike(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))

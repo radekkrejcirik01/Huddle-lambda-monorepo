@@ -69,6 +69,12 @@ type GetHuddleCommentsResponse struct {
 	Mentions []huddles.Mention           `json:"mentions,omitempty"`
 }
 
+type GetHuddleCommentsLikesResponse struct {
+	Status  string          `json:"status"`
+	Message string          `json:"message,omitempty"`
+	Data    []huddles.Liker `json:"data,omitempty"`
+}
+
 type GetChatsResponse struct {
 	Status  string           `json:"status"`
 	Message string           `json:"message,omitempty"`
