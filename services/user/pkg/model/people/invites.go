@@ -2,6 +2,7 @@ package people
 
 import (
 	"errors"
+	"fmt"
 
 	n "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
@@ -21,8 +22,9 @@ func (Invite) TableName() string {
 }
 
 type Person struct {
+	Id           int    `json:"id"`
 	Username     string `json:"username"`
-	Firstname    string `json:"firstname"`
+	Firstname    string `json:"name"`
 	ProfilePhoto string `json:"profilePhoto"`
 }
 
@@ -40,7 +42,12 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 		Sender:   t.Sender,
 		Receiver: t.Receiver,
 	}
-	if err := db.Table("invites").FirstOrCreate(&invite).Error; err != nil {
+	if err := db.
+		Table("invites").
+		Where("(sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)",
+			t.Sender, t.Receiver, t.Receiver, t.Sender).
+		FirstOrCreate(&invite).
+		Error; err != nil {
 		return "", err
 	}
 
@@ -73,20 +80,44 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 }
 
 // Get people from invites table
-func GetPeople(db *gorm.DB, username string) ([]Person, error) {
+func GetPeople(db *gorm.DB, username string, lastId string) ([]Person, error) {
 	var invites []Invite
 	var people []Person
 
+	var idCondition string
+	if lastId != "" {
+		idCondition = fmt.Sprintf("id < %s AND ", lastId)
+	}
 	if err := db.
 		Table("invites").
-		Where("(sender = ? OR receiver = ?) AND accepted = 1", username, username).
+		Where(idCondition+"(sender = ? OR receiver = ?) AND accepted = 1",
+			username, username).
+		Order("id DESC").
+		Limit(20).
 		Find(&invites).Error; err != nil {
-		return people, err
+		return []Person{}, err
 	}
 
 	usernames := GetUsernamesFromInvites(invites, username)
-	if err := db.Table("users").Where("username IN ?", usernames).Find(&people).Error; err != nil {
-		return people, err
+
+	var profiles []Person
+	if err := db.Table("users").Where("username IN ?", usernames).Find(&profiles).Error; err != nil {
+		return []Person{}, err
+	}
+
+	for _, invite := range invites {
+		var inviteUser string
+
+		if invite.Sender == username {
+			inviteUser = invite.Receiver
+		} else {
+			inviteUser = invite.Sender
+		}
+
+		person := getPersonByUsername(profiles, inviteUser)
+		person.Id = int(invite.Id)
+
+		people = append(people, person)
 	}
 
 	return people, nil
@@ -161,4 +192,17 @@ func GetUsernamesFromInvites(acceptedInvites []Invite, username string) []string
 	}
 
 	return usernames
+}
+
+// Get person by username from profiles
+func getPersonByUsername(profiles []Person, username string) Person {
+	var person Person
+	for _, profile := range profiles {
+		if profile.Username == username {
+			person = profile
+
+			break
+		}
+	}
+	return person
 }

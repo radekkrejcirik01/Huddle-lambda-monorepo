@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -62,16 +63,30 @@ type GetComments struct {
 	Message  string
 }
 
-// Get notifications from notifications_people and notifications_huddles tables
-func GetNotifications(db *gorm.DB, username string) ([]NotificationData, error) {
+// Get notifications from notifications table
+func GetNotifications(db *gorm.DB, username string, lastId string) ([]NotificationData, error) {
 	var notificationsData []NotificationData
+	var notifications []Notification
+	var acceptedInvites []int
+	var whats []GetHuddles
+	var confirmedHuddles []int
+	var profiles []Person
 
 	if err := db.Table("notifications").Where("receiver = ?", username).Update("seen", 1).Error; err != nil {
 		return []NotificationData{}, nil
 	}
 
-	var notifications []Notification
-	if err := db.Table("notifications").Where("receiver = ?", username).Find(&notifications).Error; err != nil {
+	var idCondition string
+	if lastId != "" {
+		idCondition = fmt.Sprintf("id < %s AND ", lastId)
+	}
+	if err := db.
+		Table("notifications").
+		Where(idCondition+"receiver = ?", username).
+		Order("created DESC").
+		Limit(20).
+		Find(&notifications).
+		Error; err != nil {
 		return []NotificationData{}, err
 	}
 
@@ -80,7 +95,6 @@ func GetNotifications(db *gorm.DB, username string) ([]NotificationData, error) 
 	commentsIds := getCommentsIdsFromNotifications(notifications)
 	usernames := getUsernamesFromNotifications(notifications)
 
-	var acceptedInvites []int
 	if len(invitesIds) > 0 {
 		if err := db.
 			Table("invites").
@@ -92,8 +106,6 @@ func GetNotifications(db *gorm.DB, username string) ([]NotificationData, error) 
 		}
 	}
 
-	var whats []GetHuddles
-	var confirmedHuddles []int
 	if len(huddlesIds) > 0 {
 		if err := db.
 			Table("huddles").
@@ -126,7 +138,6 @@ func GetNotifications(db *gorm.DB, username string) ([]NotificationData, error) 
 		}
 	}
 
-	var profiles []Person
 	if err := db.
 		Table("users").
 		Select("username, firstname, profile_photo").
@@ -136,7 +147,7 @@ func GetNotifications(db *gorm.DB, username string) ([]NotificationData, error) 
 		return []NotificationData{}, err
 	}
 
-	for i, notification := range notifications {
+	for _, notification := range notifications {
 		var accepted int
 		var what string
 		var confirmed int
@@ -172,7 +183,7 @@ func GetNotifications(db *gorm.DB, username string) ([]NotificationData, error) 
 		time := time.Unix(notification.Created, 0).Format(timeFormat)
 
 		notificationsData = append(notificationsData, NotificationData{
-			Id:           i,
+			Id:           int(notification.Id),
 			EventId:      eventId,
 			Sender:       notification.Sender,
 			SenderName:   name,

@@ -1,6 +1,7 @@
 package messaging
 
 import (
+	"fmt"
 	"time"
 
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
@@ -59,13 +60,17 @@ func CreateConversation(db *gorm.DB, t *Create) (uint, error) {
 }
 
 // Get chats from conversations table
-func GetChats(db *gorm.DB, username string) ([]Chat, error) {
+func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 	var chats []Chat
 	var peopleInConversations []PersonInConversation
 	var lastMessages []LastMessage
 	var lastReadMessages []LastReadMessage
 	var people []p.Person
 
+	var idCondition string
+	if lastId != "" {
+		idCondition = fmt.Sprintf("id < %s AND ", lastId)
+	}
 	// Get last messages by username
 	if err := db.
 		Raw(`
@@ -78,7 +83,7 @@ func GetChats(db *gorm.DB, username string) ([]Chat, error) {
 			FROM
 				messages
 			WHERE
-				id IN(
+				`+idCondition+`id IN(
 					SELECT
 						MAX(id)
 						FROM messages
@@ -91,7 +96,8 @@ func GetChats(db *gorm.DB, username string) ([]Chat, error) {
 						GROUP BY
 							conversation_id)
 			ORDER BY
-				id DESC`, username).
+				id DESC
+			LIMIT 15`, username).
 		Find(&lastMessages).Error; err != nil {
 		return []Chat{}, err
 	}

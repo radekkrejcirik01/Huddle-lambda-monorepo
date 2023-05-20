@@ -1,6 +1,7 @@
 package huddles
 
 import (
+	"fmt"
 	"time"
 
 	n "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
@@ -163,20 +164,43 @@ func AddHuddleMentionComment(db *gorm.DB, t *MentionComment) error {
 }
 
 // Get Huddle comments from huddles_comments table
-func GetHuddleComments(db *gorm.DB, huddleId uint, username string) ([]HuddleCommentData, []Mention, error) {
+func GetHuddleComments(
+	db *gorm.DB,
+	huddleId uint,
+	username string,
+	lastId string) ([]HuddleCommentData, []Mention, error) {
 	var comments []HuddleCommentData
 	var mentions []Mention
 	var huddleComments []HuddleComment
 	var people []p.Person
 	var likes []HuddleCommentLike
 
+	var idCondition string
+	if lastId != "" {
+		idCondition = fmt.Sprintf("id > %s AND ", lastId)
+	}
+
 	if err := db.
 		Table("huddles_comments").
-		Where("huddle_id = ?", huddleId).
+		Where(idCondition+"huddle_id = ?", huddleId).
+		Limit(15).
 		Find(&huddleComments).
 		Error; err != nil {
 		return comments, mentions, err
 	}
+
+	var mentionsUsernames []string
+	if err := db.
+		Table("huddles_comments").
+		Distinct().
+		Select("sender").
+		Where("huddle_id = ?", huddleId).
+		Find(&mentionsUsernames).
+		Error; err != nil {
+		return comments, mentions, err
+	}
+
+	mentions = getMentions(mentionsUsernames, people)
 
 	commentsUsernames := getCommentsUsernames(huddleComments)
 	if err := db.
@@ -220,8 +244,6 @@ func GetHuddleComments(db *gorm.DB, huddleId uint, username string) ([]HuddleCom
 			Time:         time,
 		})
 	}
-
-	mentions = getMentions(commentsUsernames, people)
 
 	return comments, mentions, nil
 }

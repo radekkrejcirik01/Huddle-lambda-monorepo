@@ -3,6 +3,7 @@ package messaging
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -101,13 +102,19 @@ func SendMessage(db *gorm.DB, t *Send) error {
 }
 
 // Get conversation messages from messages table
-func GetConversation(db *gorm.DB, conversaionId int) ([]MessageData, error) {
+func GetConversation(db *gorm.DB, conversaionId int, lastId string) ([]MessageData, error) {
 	var message []MessageData
+
+	var idCondition string
+	if lastId != "" {
+		idCondition = fmt.Sprintf("id < %s AND ", lastId)
+	}
 
 	if err := db.
 		Table("messages").
-		Where("conversation_id = ?", conversaionId).
+		Where(idCondition+"conversation_id = ?", conversaionId).
 		Order("id desc").
+		Limit(20).
 		Find(&message).
 		Error; err != nil {
 		return nil, err
@@ -160,6 +167,7 @@ func GetMessagesByUsernames(db *gorm.DB, user1 string, user2 string) ([]MessageD
 		Table("messages").
 		Where("conversation_id = ?", conversaionId).
 		Order("id desc").
+		Limit(20).
 		Find(&message).
 		Error; err != nil {
 		return nil, 0, err

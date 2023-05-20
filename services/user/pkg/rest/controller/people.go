@@ -31,11 +31,12 @@ func AddPersonInvite(c *fiber.Ctx) error {
 	})
 }
 
-// GetPeople GET /people
+// GetPeople GET /people/:username/:lastId
 func GetPeople(c *fiber.Ctx) error {
 	username := c.Params("username")
+	lastId := c.Params("lastId")
 
-	people, err := people.GetPeople(database.DB, username)
+	people, err := people.GetPeople(database.DB, username, lastId)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",

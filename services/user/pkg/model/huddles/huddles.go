@@ -2,6 +2,7 @@ package huddles
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
@@ -102,10 +103,15 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 }
 
 // Get user huddles from huddles table
-func GetUserHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
+func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, error) {
 	var huddlesData []HuddleData
 	var huddles []Huddle
 	var profiles []p.Person
+
+	var idCondition string
+	if lastId != "" {
+		idCondition = fmt.Sprintf("id < %s AND ", lastId)
+	}
 
 	query :=
 		`
@@ -114,7 +120,7 @@ func GetUserHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
 		FROM
 			huddles
 		WHERE
-			created_by = ?
+		` + idCondition + `created_by = ?
 			OR id IN(
 				SELECT
 					huddle_id FROM huddles_interacted
@@ -123,6 +129,7 @@ func GetUserHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
 					AND confirmed = 1)
 		ORDER BY
 			created DESC
+		LIMIT 20
 		`
 	if err := db.Raw(query, username, username).Find(&huddles).Error; err != nil {
 		return huddlesData, err
@@ -160,9 +167,10 @@ func GetUserHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
 }
 
 // Get Huddles from huddles table
-func GetHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
+func GetHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, error) {
 	var huddlesData []HuddleData
 	var invites []Invite
+	var huddles []Huddle
 
 	if err := db.
 		Table("invites").
@@ -173,11 +181,15 @@ func GetHuddles(db *gorm.DB, username string) ([]HuddleData, error) {
 
 	people := GetUsernamesFromInvites(invites, username)
 
-	var huddles []Huddle
+	var idCondition string
+	if lastId != "" {
+		idCondition = fmt.Sprintf("id < %s AND ", lastId)
+	}
 	if err := db.
 		Table("huddles").
-		Where("(created_by IN ? OR created_by = ?) AND confirmed = 0 AND canceled = 0", people, username).
+		Where(idCondition+"(created_by IN ? OR created_by = ?) AND confirmed = 0 AND canceled = 0", people, username).
 		Order("created DESC").
+		Limit(10).
 		Find(&huddles).
 		Error; err != nil {
 		return huddlesData, err

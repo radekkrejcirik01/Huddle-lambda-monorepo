@@ -9,11 +9,12 @@ import (
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/messaging"
 )
 
-// GetChats GET /chats/:username
+// GetChats GET /chats/:username/:lastId?
 func GetChats(c *fiber.Ctx) error {
 	username := c.Params("username")
+	lastId := c.Params("lastId")
 
-	chats, err := messaging.GetChats(database.DB, username)
+	chats, err := messaging.GetChats(database.DB, username, lastId)
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -53,16 +54,15 @@ func SendMessage(c *fiber.Ctx) error {
 	})
 }
 
-// GetMessages GET /conversation/:conversationId
+// GetMessages GET /conversation/:conversationId/:lastId?
 func GetConversation(c *fiber.Ctx) error {
-	conversationId := c.Params("conversationId")
-
-	id, parseErr := strconv.Atoi(conversationId)
+	id, parseErr := strconv.Atoi(c.Params("conversationId"))
 	if parseErr != nil {
 		fmt.Println(parseErr)
 	}
+	lastId := c.Params("lastId")
 
-	messages, err := messaging.GetConversation(database.DB, id)
+	messages, err := messaging.GetConversation(database.DB, id, lastId)
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{

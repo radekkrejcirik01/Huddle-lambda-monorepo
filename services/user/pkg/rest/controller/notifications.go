@@ -6,11 +6,12 @@ import (
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 )
 
-// GetNotifications POST /get/notifications
+// GetNotifications POST /get/notifications/:username/:lastId?
 func GetNotifications(c *fiber.Ctx) error {
 	username := c.Params("username")
+	lastId := c.Params("lastId")
 
-	notifications, err := notifications.GetNotifications(database.DB, username)
+	notifications, err := notifications.GetNotifications(database.DB, username, lastId)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
