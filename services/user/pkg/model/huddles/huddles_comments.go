@@ -200,8 +200,6 @@ func GetHuddleComments(
 		return comments, mentions, err
 	}
 
-	mentions = getMentions(mentionsUsernames, people)
-
 	commentsUsernames := getCommentsUsernames(huddleComments)
 	if err := db.
 		Table("users").
@@ -245,6 +243,8 @@ func GetHuddleComments(
 		})
 	}
 
+	mentions = getMentions(mentionsUsernames, people)
+
 	return comments, mentions, nil
 }
 
@@ -287,12 +287,12 @@ func getMentions(usernames []string, people []p.Person) []Mention {
 	var mentions []Mention
 
 	for _, username := range usernames {
-		for _, user := range people {
-			if username == user.Username {
+		for _, person := range people {
+			if username == person.Username {
 				mentions = append(mentions, Mention{
-					Username:     user.Username,
-					Name:         user.Firstname,
-					ProfilePhoto: user.ProfilePhoto,
+					Username:     person.Username,
+					Name:         person.Firstname,
+					ProfilePhoto: person.ProfilePhoto,
 				})
 
 				break
