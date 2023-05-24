@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	n "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
 )
@@ -49,16 +48,6 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 		FirstOrCreate(&invite).
 		Error; err != nil {
 		return "", err
-	}
-
-	notification := n.Notification{
-		Sender:   t.Sender,
-		Receiver: t.Receiver,
-		EventId:  int(invite.Id),
-		Type:     n.PersonInviteType,
-	}
-	if err := db.Table("notifications").Create(&notification).Error; err != nil {
-		return "Sorry we couldn't send an invite", err
 	}
 
 	tokens := &[]string{}
@@ -129,16 +118,6 @@ func AcceptPersonInvite(db *gorm.DB, t *Invite) error {
 		Table("invites").
 		Where("id = ?", t.Id).
 		Update("accepted", 1).Error; err != nil {
-		return err
-	}
-
-	notification := n.Notification{
-		Sender:   t.Sender,
-		Receiver: t.Receiver,
-		EventId:  int(t.Id),
-		Type:     n.PersonInviteAcceptType,
-	}
-	if err := db.Table("notifications").Create(&notification).Error; err != nil {
 		return err
 	}
 

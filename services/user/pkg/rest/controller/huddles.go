@@ -99,30 +99,6 @@ func UpdateHuddle(c *fiber.Ctx) error {
 	})
 }
 
-// PostHuddleAgain PUT /huddle
-func PostHuddleAgain(c *fiber.Ctx) error {
-	t := &huddles.PostAgain{}
-
-	if err := c.BodyParser(t); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	if err := huddles.PostHuddleAgain(database.DB, t); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(Response{
-		Status:  "success",
-		Message: "Huddle successfully updated",
-	})
-}
-
 // GetHuddleById GET /huddle/:id/:username
 func GetHuddleById(c *fiber.Ctx) error {
 	id := c.Params("id")
@@ -202,8 +178,7 @@ func GetHuddleInteractions(c *fiber.Ctx) error {
 		fmt.Println(parseErr)
 	}
 
-	huddleInteractions, confirmedUser, getErr :=
-		huddles.GetHuddleInteractions(database.DB, id)
+	huddleInteractions, getErr := huddles.GetHuddleInteractions(database.DB, id)
 
 	if getErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -213,34 +188,9 @@ func GetHuddleInteractions(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(GetHuddleInteractionsResponse{
-		Status:        "success",
-		Message:       "Huddle interactions successfully got",
-		Data:          huddleInteractions,
-		ConfirmedUser: confirmedUser,
-	})
-}
-
-// ConfirmHuddle POST /huddle/confirm
-func ConfirmHuddle(c *fiber.Ctx) error {
-	t := &huddles.Interact{}
-
-	if err := c.BodyParser(t); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	if err := huddles.ConfirmHuddle(database.DB, t); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(Response{
 		Status:  "success",
-		Message: "Huddle confirmed successfully",
+		Message: "Huddle interactions successfully got",
+		Data:    huddleInteractions,
 	})
 }
 
@@ -262,30 +212,6 @@ func RemoveHuddleInteraction(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(Response{
 		Status:  "success",
 		Message: "Huddle interaction removed",
-	})
-}
-
-// RemoveHuddleConfirm PUT /huddle/confirm
-func RemoveHuddleConfirm(c *fiber.Ctx) error {
-	t := &huddles.RemoveConfirm{}
-
-	if err := c.BodyParser(t); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	if err := huddles.RemoveHuddleConfirm(database.DB, t); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(Response{
-		Status:  "success",
-		Message: "Huddle confirm removed",
 	})
 }
 

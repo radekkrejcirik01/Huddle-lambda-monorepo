@@ -49,25 +49,6 @@ func GetUser(c *fiber.Ctx) error {
 	})
 }
 
-// GetPeopleNumber GET /people-number/:username
-func GetPeopleNumber(c *fiber.Ctx) error {
-	username := c.Params("username")
-
-	number, err := users.GetPeopleNumber(database.DB, username)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(PeopleNumberResponse{
-		Status:       "succes",
-		Message:      "People number succesfully got",
-		PeopleNumber: number,
-	})
-}
-
 // UploadPhoto POST /upload/photo
 func UploadPhoto(c *fiber.Ctx) error {
 	t := &users.UplaodProfilePhotoBody{}

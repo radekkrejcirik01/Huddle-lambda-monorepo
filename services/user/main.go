@@ -10,7 +10,6 @@ import (
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/database"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/huddles"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/messaging"
-	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/users"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/rest"
@@ -30,7 +29,6 @@ func init() {
 		&messaging.Message{},
 		&messaging.PersonInConversation{},
 		&messaging.LastReadMessage{},
-		&notifications.Notification{},
 		&users.User{},
 	); err != nil {
 		log.Fatal(err)

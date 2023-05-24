@@ -3,6 +3,7 @@ package huddles
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
@@ -17,11 +18,7 @@ type Huddle struct {
 	Id        uint `gorm:"primary_key;auto_increment;not_null"`
 	CreatedBy string
 	What      string
-	Where     string
-	When      string
-	Confirmed int   `gorm:"default:0"`
 	Created   int64 `gorm:"autoCreateTime"`
-	Canceled  int   `gorm:"default:0"`
 }
 
 func (Huddle) TableName() string {
@@ -31,8 +28,6 @@ func (Huddle) TableName() string {
 type NewHuddle struct {
 	Sender string
 	What   string
-	Where  string
-	When   string
 }
 
 type HuddleData struct {
@@ -41,11 +36,7 @@ type HuddleData struct {
 	Name           string `json:"name"`
 	ProfilePhoto   string `json:"profilePhoto"`
 	What           string `json:"what"`
-	Where          string `json:"where"`
-	When           string `json:"when"`
 	Interacted     int    `json:"interacted,omitempty"`
-	Confirmed      int    `json:"confirmed,omitempty"`
-	Canceled       int    `json:"canceled,omitempty"`
 	CommentsNumber int    `json:"commentsNumber,omitempty"`
 }
 
@@ -55,10 +46,8 @@ type Invite struct {
 }
 
 type Update struct {
-	Id    int
-	What  string
-	Where string
-	When  string
+	Id   int
+	What string
 }
 
 type PostAgain struct {
@@ -70,8 +59,6 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 	huddle := Huddle{
 		CreatedBy: t.Sender,
 		What:      t.What,
-		Where:     t.Where,
-		When:      t.When,
 	}
 	if err := db.Table("huddles").Create(&huddle).Error; err != nil {
 		return err
@@ -113,25 +100,12 @@ func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, 
 		idCondition = fmt.Sprintf("id < %s AND ", lastId)
 	}
 
-	query :=
-		`
-		SELECT
-			*
-		FROM
-			huddles
-		WHERE
-		` + idCondition + `created_by = ?
-			OR id IN(
-				SELECT
-					huddle_id FROM huddles_interacted
-				WHERE
-					sender = ?
-					AND confirmed = 1)
-		ORDER BY
-			created DESC
-		LIMIT 20
-		`
-	if err := db.Raw(query, username, username).Find(&huddles).Error; err != nil {
+	if err := db.
+		Table("huddles").
+		Where(idCondition+"created_by = ?", username).
+		Order("created DESC").
+		Limit(20).
+		Find(&huddles).Error; err != nil {
 		return huddlesData, err
 	}
 
@@ -154,11 +128,7 @@ func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, 
 			Name:         profileInfo.Firstname,
 			ProfilePhoto: profileInfo.ProfilePhoto,
 			What:         huddle.What,
-			Where:        huddle.Where,
-			When:         huddle.When,
 			Interacted:   interacted,
-			Confirmed:    huddle.Confirmed,
-			Canceled:     huddle.Canceled,
 		})
 
 	}
@@ -181,13 +151,16 @@ func GetHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, erro
 
 	people := GetUsernamesFromInvites(invites, username)
 
+	// Two days ago in unix time
+	t := time.Now().AddDate(0, 0, -2).Unix()
+
 	var idCondition string
 	if lastId != "" {
 		idCondition = fmt.Sprintf("id < %s AND ", lastId)
 	}
 	if err := db.
 		Table("huddles").
-		Where(idCondition+"(created_by IN ? OR created_by = ?) AND confirmed = 0 AND canceled = 0", people, username).
+		Where(idCondition+"(created_by IN ? OR created_by = ?) AND created > ?", people, username, t).
 		Order("created DESC").
 		Limit(10).
 		Find(&huddles).
@@ -237,8 +210,6 @@ func GetHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, erro
 			Name:           profileInfo.Firstname,
 			ProfilePhoto:   profileInfo.ProfilePhoto,
 			What:           huddle.What,
-			Where:          huddle.Where,
-			When:           huddle.When,
 			Interacted:     interacted,
 			CommentsNumber: commentsNumber,
 		})
@@ -251,17 +222,10 @@ func GetHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, erro
 // Update Huddle in huddles table
 func UpdateHuddle(db *gorm.DB, t *Update) error {
 	update := map[string]interface{}{
-		"what":  t.What,
-		"where": t.Where,
-		"when":  t.When,
+		"what": t.What,
 	}
 
 	return db.Table("huddles").Where("id = ?", t.Id).Updates(update).Error
-}
-
-// Update Huddle canceled column in huddles table
-func PostHuddleAgain(db *gorm.DB, t *PostAgain) error {
-	return db.Table("huddles").Where("id = ?", t.Id).Update("canceled", 0).Error
 }
 
 // Get Huddle from huddles table by id
@@ -310,11 +274,7 @@ func GetHuddleById(db *gorm.DB, id uint, username string) (HuddleData, error) {
 		Name:         profile.Firstname,
 		ProfilePhoto: profile.ProfilePhoto,
 		What:         huddle.What,
-		Where:        huddle.Where,
-		When:         huddle.When,
 		Interacted:   interacted,
-		Confirmed:    huddle.Confirmed,
-		Canceled:     huddle.Canceled,
 	}
 
 	return huddleData, nil

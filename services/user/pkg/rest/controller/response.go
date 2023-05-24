@@ -3,7 +3,6 @@ package controller
 import (
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/huddles"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/messaging"
-	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/users"
 )
@@ -14,9 +13,9 @@ type Response struct {
 }
 
 type UserResponse struct {
-	Status  string        `json:"status"`
-	Message string        `json:"message,omitempty"`
-	Data    users.UserGet `json:"data,omitempty"`
+	Status  string     `json:"status"`
+	Message string     `json:"message,omitempty"`
+	Data    users.User `json:"data,omitempty"`
 }
 
 type PeopleNumberResponse struct {
@@ -37,12 +36,6 @@ type GetInviteResponse struct {
 	Data    people.Invite `json:"data,omitempty"`
 }
 
-type NotificationsResponse struct {
-	Status  string                           `json:"status"`
-	Message string                           `json:"message,omitempty"`
-	Data    []notifications.NotificationData `json:"data,omitempty"`
-}
-
 type GetHuddlesResponse struct {
 	Status  string               `json:"status"`
 	Message string               `json:"message,omitempty"`
@@ -56,10 +49,9 @@ type GetHuddleResponse struct {
 }
 
 type GetHuddleInteractionsResponse struct {
-	Status        string                   `json:"status"`
-	Message       string                   `json:"message,omitempty"`
-	Data          []huddles.UserInteracted `json:"data,omitempty"`
-	ConfirmedUser *huddles.UserInteracted  `json:"confirmedUser"`
+	Status  string                   `json:"status"`
+	Message string                   `json:"message,omitempty"`
+	Data    []huddles.UserInteracted `json:"data,omitempty"`
 }
 
 type GetHuddleCommentsResponse struct {

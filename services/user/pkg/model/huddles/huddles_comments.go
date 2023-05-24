@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	n "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
@@ -72,16 +71,6 @@ func AddHuddleComment(db *gorm.DB, t *HuddleComment) error {
 		return nil
 	}
 
-	notification := n.Notification{
-		EventId:  int(t.Id),
-		Sender:   t.Sender,
-		Receiver: createdBy,
-		Type:     n.CommentType,
-	}
-	if err := db.Table("notifications").Create(&notification).Error; err != nil {
-		return err
-	}
-
 	if err := db.
 		Table("users").
 		Select("firstname").
@@ -125,16 +114,6 @@ func AddHuddleMentionComment(db *gorm.DB, t *MentionComment) error {
 
 	if t.Sender == t.Receiver {
 		return nil
-	}
-
-	notification := n.Notification{
-		EventId:  int(comment.Id),
-		Sender:   t.Sender,
-		Receiver: t.Receiver,
-		Type:     n.CommentMentionType,
-	}
-	if err := db.Table("notifications").Create(&notification).Error; err != nil {
-		return err
 	}
 
 	if err := db.

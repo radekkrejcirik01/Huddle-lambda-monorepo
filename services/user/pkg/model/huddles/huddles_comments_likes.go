@@ -3,7 +3,6 @@ package huddles
 import (
 	"fmt"
 
-	n "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/notifications"
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
@@ -44,17 +43,6 @@ func LikeHuddleComment(db *gorm.DB, t *Like) error {
 	}
 
 	if err := db.Table("huddles_comments_likes").Create(&like).Error; err != nil {
-		return err
-	}
-
-	notification := n.Notification{
-		EventId:  int(like.Id),
-		Sender:   t.Sender,
-		Receiver: t.Receiver,
-		Type:     n.CommentLikeType,
-	}
-
-	if err := db.Table("notifications").Create(&notification).Error; err != nil {
 		return err
 	}
 

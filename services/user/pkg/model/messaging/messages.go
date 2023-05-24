@@ -89,7 +89,7 @@ func SendMessage(db *gorm.DB, t *Send) error {
 		body = "Sends a photo"
 	}
 
-	notification := service.FcmNotification{
+	fcmNotification := service.FcmNotification{
 		Sender:  t.Sender,
 		Type:    "message",
 		Title:   t.Name,
@@ -98,7 +98,7 @@ func SendMessage(db *gorm.DB, t *Send) error {
 		Devices: *tokens,
 	}
 
-	return service.SendNotification(&notification)
+	return service.SendNotification(&fcmNotification)
 }
 
 // Get conversation messages from messages table
