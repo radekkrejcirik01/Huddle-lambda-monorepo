@@ -75,12 +75,11 @@ func AcceptPersonInvite(c *fiber.Ctx) error {
 	})
 }
 
-// GetPersonInvite GET /person/invite/:user1/:user2
-func GetPersonInvite(c *fiber.Ctx) error {
-	user1 := c.Params("user1")
-	user2 := c.Params("user2")
+// GetInvites GET /invites/:username
+func GetInvites(c *fiber.Ctx) error {
+	username := c.Params("username")
 
-	invite, err := people.GetPersonInvite(database.DB, user1, user2)
+	invites, err := people.GetInvites(database.DB, username)
 
 	if err != nil {
 		return c.Status(fiber.StatusOK).JSON(Response{
@@ -91,8 +90,8 @@ func GetPersonInvite(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(GetInviteResponse{
 		Status:  "succes",
-		Message: "Invite succesfully got",
-		Data:    invite,
+		Message: "Invites succesfully got",
+		Data:    invites,
 	})
 }
 

@@ -31,9 +31,9 @@ type PeopleResponse struct {
 }
 
 type GetInviteResponse struct {
-	Status  string        `json:"status"`
-	Message string        `json:"message,omitempty"`
-	Data    people.Invite `json:"data,omitempty"`
+	Status  string                      `json:"status"`
+	Message string                      `json:"message,omitempty"`
+	Data    []people.InviteResponseData `json:"data,omitempty"`
 }
 
 type GetHuddlesResponse struct {

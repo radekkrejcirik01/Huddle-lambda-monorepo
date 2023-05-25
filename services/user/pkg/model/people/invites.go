@@ -21,10 +21,15 @@ func (Invite) TableName() string {
 }
 
 type Person struct {
-	Id           int    `json:"id"`
+	Id           int    `json:"id,omitempty"`
 	Username     string `json:"username"`
-	Firstname    string `json:"name"`
+	Firstname    string `json:"name,omitempty"`
 	ProfilePhoto string `json:"profilePhoto"`
+}
+
+type InviteResponseData struct {
+	Id   int    `json:"id"`
+	User Person `json:"user"`
 }
 
 // Add invite to invites table
@@ -41,13 +46,19 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 		Sender:   t.Sender,
 		Receiver: t.Receiver,
 	}
-	if err := db.
+	if rows := db.
 		Table("invites").
 		Where("(sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)",
 			t.Sender, t.Receiver, t.Receiver, t.Sender).
 		FirstOrCreate(&invite).
-		Error; err != nil {
-		return "", err
+		RowsAffected; rows == 0 {
+		var message string
+		if invite.Sender == t.Sender {
+			message = "Invite already sent"
+		} else {
+			message = t.Receiver + " already invited you"
+		}
+		return message, nil
 	}
 
 	tokens := &[]string{}
@@ -112,6 +123,44 @@ func GetPeople(db *gorm.DB, username string, lastId string) ([]Person, error) {
 	return people, nil
 }
 
+// Get invites from invites table
+func GetInvites(db *gorm.DB, username string) ([]InviteResponseData, error) {
+	var invites []Invite
+	var profiles []Person
+	var invitesResponse []InviteResponseData
+
+	if err := db.
+		Table("invites").
+		Where("receiver = ? AND accepted = 0", username).
+		Order("id DESC").
+		Limit(20).
+		Find(&invites).
+		Error; err != nil {
+		return nil, err
+	}
+
+	senders := getSenders(invites)
+
+	if err := db.
+		Table("users").
+		Select("username, profile_photo").
+		Where("username IN ?", senders).
+		Find(&profiles).
+		Error; err != nil {
+		return nil, err
+	}
+
+	for _, invite := range invites {
+		user := getUser(profiles, invite.Sender)
+		invitesResponse = append(invitesResponse, InviteResponseData{
+			Id:   int(invite.Id),
+			User: user,
+		})
+	}
+
+	return invitesResponse, nil
+}
+
 // Update accepted column in invites table to 1
 func AcceptPersonInvite(db *gorm.DB, t *Invite) error {
 	if err := db.
@@ -135,18 +184,6 @@ func AcceptPersonInvite(db *gorm.DB, t *Invite) error {
 	}
 
 	return service.SendNotification(&fcmNotification)
-}
-
-// Get person invite information from notifications table
-func GetPersonInvite(db *gorm.DB, user1 string, user2 string) (Invite, error) {
-	var invite Invite
-	err := db.
-		Table("invites").
-		Where("(sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)",
-			user1, user2, user2, user1).
-		First(&invite).Error
-
-	return invite, err
 }
 
 // Update accepted column in invites table to 0
@@ -184,4 +221,25 @@ func getPersonByUsername(profiles []Person, username string) Person {
 		}
 	}
 	return person
+}
+
+// Get senders from invites
+func getSenders(invites []Invite) []string {
+	var senders []string
+	for _, invite := range invites {
+		senders = append(senders, invite.Sender)
+	}
+	return senders
+}
+
+// Get senders from invites
+func getUser(profiles []Person, username string) Person {
+	var profile Person
+	for _, p := range profiles {
+		if p.Username == username {
+			profile = p
+			break
+		}
+	}
+	return profile
 }

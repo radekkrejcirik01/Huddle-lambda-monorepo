@@ -5,14 +5,14 @@ import (
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/rest/controller"
 )
 
-// Create new REST API serveer
+// Create new REST API server
 func Create() *fiber.App {
 	app := fiber.New()
 
 	app.Get("/", controller.Index)
 	app.Get("/user/:username", controller.GetUser)
 	app.Get("/people/:username/:lastId?", controller.GetPeople)
-	app.Get("/person/:user1/:user2", controller.GetPersonInvite)
+	app.Get("/invites/:username", controller.GetInvites)
 	app.Get("/huddles/:username/:lastId?", controller.GetHuddles)
 	app.Get("/user-huddles/:username/:lastId?", controller.GetUserHuddles)
 	app.Get("/huddle/:id/:username", controller.GetHuddleById)
