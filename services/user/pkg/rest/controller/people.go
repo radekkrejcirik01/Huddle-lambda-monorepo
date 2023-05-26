@@ -36,7 +36,7 @@ func GetPeople(c *fiber.Ctx) error {
 	username := c.Params("username")
 	lastId := c.Params("lastId")
 
-	people, err := people.GetPeople(database.DB, username, lastId)
+	people, invitesNumber, err := people.GetPeople(database.DB, username, lastId)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
@@ -45,9 +45,10 @@ func GetPeople(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(PeopleResponse{
-		Status:  "succes",
-		Message: "People succesfully got",
-		Data:    people,
+		Status:        "succes",
+		Message:       "People succesfully got",
+		Data:          people,
+		InvitesNumber: invitesNumber,
 	})
 }
 

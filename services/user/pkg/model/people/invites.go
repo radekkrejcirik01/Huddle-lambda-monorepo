@@ -80,9 +80,10 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 }
 
 // Get people from invites table
-func GetPeople(db *gorm.DB, username string, lastId string) ([]Person, error) {
+func GetPeople(db *gorm.DB, username string, lastId string) ([]Person, int64, error) {
 	var invites []Invite
 	var people []Person
+	var invitesNumber int64
 
 	var idCondition string
 	if lastId != "" {
@@ -95,14 +96,14 @@ func GetPeople(db *gorm.DB, username string, lastId string) ([]Person, error) {
 		Order("id DESC").
 		Limit(20).
 		Find(&invites).Error; err != nil {
-		return []Person{}, err
+		return nil, 0, err
 	}
 
 	usernames := GetUsernamesFromInvites(invites, username)
 
 	var profiles []Person
 	if err := db.Table("users").Where("username IN ?", usernames).Find(&profiles).Error; err != nil {
-		return []Person{}, err
+		return nil, 0, err
 	}
 
 	for _, invite := range invites {
@@ -120,7 +121,15 @@ func GetPeople(db *gorm.DB, username string, lastId string) ([]Person, error) {
 		people = append(people, person)
 	}
 
-	return people, nil
+	if err := db.
+		Table("invites").
+		Where("receiver = ? AND accepted = 0", username).
+		Count(&invitesNumber).
+		Error; err != nil {
+		return nil, 0, err
+	}
+
+	return people, invitesNumber, nil
 }
 
 // Get invites from invites table
