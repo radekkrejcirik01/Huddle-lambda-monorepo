@@ -31,7 +31,7 @@ func AddPersonInvite(c *fiber.Ctx) error {
 	})
 }
 
-// GetPeople GET /people/:username/:lastId
+// GetPeople GET /people/:username/:lastId?
 func GetPeople(c *fiber.Ctx) error {
 	username := c.Params("username")
 	lastId := c.Params("lastId")
@@ -90,9 +90,54 @@ func GetInvites(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(GetInviteResponse{
-		Status:  "succes",
-		Message: "Invites succesfully got",
+		Status:  "success",
+		Message: "Invites successfully got",
 		Data:    invites,
+	})
+}
+
+// GetHiddenPeople GET /hides/:username/:lastId?
+func GetHiddenPeople(c *fiber.Ctx) error {
+	username := c.Params("username")
+	lastId := c.Params("lastId")
+
+	hiddenPeople, err := people.GetHiddenPeople(database.DB, username, lastId)
+
+	if err != nil {
+		return c.Status(fiber.StatusOK).JSON(Response{
+			Status:  "error",
+			Message: "No record found",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(GetHiddenPeopleResponse{
+		Status:  "succes",
+		Message: "Hidden people successfully got",
+		Data:    hiddenPeople,
+	})
+}
+
+// UpdateHiddenPeople PUT /hide
+func UpdateHiddenPeople(c *fiber.Ctx) error {
+	t := &people.HidePeople{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := people.UpdateHiddenPeople(database.DB, t); err != nil {
+		return c.Status(fiber.StatusOK).JSON(Response{
+			Status:  "error",
+			Message: "No record found",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Hidden people successfully updated",
 	})
 }
 

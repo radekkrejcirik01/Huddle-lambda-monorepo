@@ -21,6 +21,7 @@ func init() {
 	database.Connect()
 	if err := database.DB.AutoMigrate(
 		&people.Invite{},
+		&people.Hide{},
 		&huddles.HuddleInteracted{},
 		&huddles.Huddle{},
 		&huddles.HuddleComment{},

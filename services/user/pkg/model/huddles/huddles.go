@@ -50,10 +50,6 @@ type Update struct {
 	What string
 }
 
-type PostAgain struct {
-	Id int
-}
-
 // Add Huddle to huddles table
 func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 	huddle := Huddle{
@@ -64,7 +60,7 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 		return err
 	}
 
-	var acceptedInvites []p.Invite
+	var acceptedInvites []Invite
 	if err := db.
 		Table("invites").
 		Where("(sender = ? OR receiver = ?) AND accepted = 1", t.Sender, t.Sender).
@@ -72,7 +68,17 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 		return err
 	}
 
-	usernames := p.GetUsernamesFromInvites(acceptedInvites, t.Sender)
+	var hiddenUsernames []string
+	if err := db.
+		Table("hides").
+		Select("hidden").
+		Where("user = ?", t.Sender).
+		Find(&hiddenUsernames).
+		Error; err != nil {
+		return err
+	}
+
+	usernames := GetUsernamesFromInvites(acceptedInvites, hiddenUsernames, t.Sender)
 
 	tokens, getErr := service.GetTokensByUsernames(db, usernames)
 	if getErr != nil {
@@ -140,7 +146,10 @@ func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, 
 func GetHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, error) {
 	var huddlesData []HuddleData
 	var invites []Invite
+	var invitesUsernames []string
 	var huddles []Huddle
+	var huddleIds []int
+	var huddlesUsernames []string
 
 	if err := db.
 		Table("invites").
@@ -149,7 +158,17 @@ func GetHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, erro
 		return huddlesData, err
 	}
 
-	people := GetUsernamesFromInvites(invites, username)
+	var hiddenUsernames []string
+	if err := db.
+		Table("hides").
+		Select("user").
+		Where("hidden = ?", username).
+		Find(&hiddenUsernames).
+		Error; err != nil {
+		return nil, err
+	}
+
+	invitesUsernames = GetUsernamesFromInvites(invites, hiddenUsernames, username)
 
 	// Two days ago in unix time
 	t := time.Now().AddDate(0, 0, -2).Unix()
@@ -160,7 +179,8 @@ func GetHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, erro
 	}
 	if err := db.
 		Table("huddles").
-		Where(idCondition+"(created_by IN ? OR created_by = ?) AND created > ?", people, username, t).
+		Where(idCondition+"(created_by IN ? OR created_by = ?) AND created > ?",
+			invitesUsernames, username, t).
 		Order("created DESC").
 		Limit(10).
 		Find(&huddles).
@@ -172,28 +192,32 @@ func GetHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, erro
 		return huddlesData, nil
 	}
 
-	huddlesIds := GetIdsFromHuddlesArray(huddles)
+	huddleIds = GetIdsFromHuddlesArray(huddles)
 
 	var interactedHuddlesIds []int
 	if err := db.
 		Table("huddles_interacted").
 		Select("huddle_id").
-		Where("sender = ? AND huddle_id IN ?", username, huddlesIds).
+		Where("sender = ? AND huddle_id IN ?", username, huddleIds).
 		Find(&interactedHuddlesIds).Error; err != nil {
 		return huddlesData, err
 	}
 
-	users := GetUsernamesFromHuddles(huddles)
+	huddlesUsernames = GetUsernamesFromHuddles(huddles)
 
 	var profiles []p.Person
-	if err := db.Table("users").Where("username IN ?", users).Find(&profiles).Error; err != nil {
+	if err := db.
+		Table("users").
+		Where("username IN ?", huddlesUsernames).
+		Find(&profiles).
+		Error; err != nil {
 		return huddlesData, err
 	}
 
 	var comments []HuddleComment
 	if err := db.
 		Table("huddles_comments").
-		Where("huddle_id IN ?", huddlesIds).
+		Where("huddle_id IN ?", huddleIds).
 		Find(&comments).
 		Error; err != nil {
 		return huddlesData, err
@@ -294,17 +318,21 @@ func DeleteHuddle(db *gorm.DB, id uint) error {
 }
 
 // Get usernames from invites array
-func GetUsernamesFromInvites(invites []Invite, username string) []string {
+func GetUsernamesFromInvites(invites []Invite, hiddenUsernames []string, username string) []string {
 	var usernames []string
-
 	for _, invite := range invites {
+		var user string
+
 		if invite.Sender == username {
-			usernames = append(usernames, invite.Receiver)
+			user = invite.Receiver
 		} else {
-			usernames = append(usernames, invite.Sender)
+			user = invite.Sender
+		}
+
+		if !p.IsPersonHidden(hiddenUsernames, user) {
+			usernames = append(usernames, user)
 		}
 	}
-
 	return usernames
 }
 

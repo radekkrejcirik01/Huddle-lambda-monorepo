@@ -106,6 +106,7 @@ func GetPeople(db *gorm.DB, username string, lastId string) ([]Person, int64, er
 		return nil, 0, err
 	}
 
+	// Reorder people by invites
 	for _, invite := range invites {
 		var inviteUser string
 
@@ -225,7 +226,6 @@ func getPersonByUsername(profiles []Person, username string) Person {
 	for _, profile := range profiles {
 		if profile.Username == username {
 			person = profile
-
 			break
 		}
 	}
