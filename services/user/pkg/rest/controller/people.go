@@ -141,6 +141,51 @@ func UpdateHiddenPeople(c *fiber.Ctx) error {
 	})
 }
 
+// MuteConversation PUT /mute-conversation
+func MuteConversation(c *fiber.Ctx) error {
+	t := &people.MutedConversation{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := people.MuteConversation(database.DB, t); err != nil {
+		return c.Status(fiber.StatusOK).JSON(Response{
+			Status:  "error",
+			Message: "No record found",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Conversation mute successfully updated",
+	})
+}
+
+// IsConversationMuted GET /muted/:username/:conversationId
+func IsConversationMuted(c *fiber.Ctx) error {
+	username := c.Params("username")
+	conversationId := c.Params("conversationId")
+
+	isMuted, err := people.IsConversationMuted(database.DB, username, conversationId)
+
+	if err != nil {
+		return c.Status(fiber.StatusOK).JSON(Response{
+			Status:  "error",
+			Message: "No record found",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(GetIsConversationMutedResponse{
+		Status:  "success",
+		Message: "Conversation mute successfully updated",
+		Muted:   isMuted,
+	})
+}
+
 // RemovePerson DELETE /person
 func RemovePerson(c *fiber.Ctx) error {
 	user1 := c.Params("user1")
