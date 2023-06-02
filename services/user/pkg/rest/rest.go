@@ -23,8 +23,9 @@ func Create() *fiber.App {
 	app.Get("/chats/:username/:lastId?", controller.GetChats)
 	app.Get("/conversation/:conversationId/:lastId?", controller.GetConversation)
 	app.Get("/messages/:user1/:user2", controller.GetMessagesByUsernames)
-	app.Get("/muted/:username/:conversationId",
+	app.Get("/muted-conversation/:username/:conversationId",
 		controller.IsConversationMuted)
+	app.Get("/muted-huddles/:username", controller.GetMutedHuddles)
 
 	app.Post("/user", controller.CreateUser)
 	app.Post("/photo", controller.UploadPhoto)
@@ -36,6 +37,7 @@ func Create() *fiber.App {
 	app.Post("/huddle/comment/like", controller.LikeHuddleComment)
 	app.Post("/message", controller.SendMessage)
 	app.Post("/mute-conversation", controller.MuteConversation)
+	app.Post("/mute-huddles", controller.MuteHuddles)
 
 	app.Put("/person", controller.AcceptPersonInvite)
 	app.Put("/huddle", controller.UpdateHuddle)
@@ -43,12 +45,9 @@ func Create() *fiber.App {
 
 	app.Delete("/person/:user1/:user2", controller.RemovePerson)
 	app.Delete("/huddle/:id", controller.DeleteHuddle)
-	app.Delete("/interaction/:id/:username",
-		controller.RemoveHuddleInteraction,
-	)
-	app.Delete("/like/:id/:sender",
-		controller.RemoveHuddleCommentLike,
-	)
+	app.Delete("/interaction/:id/:username", controller.RemoveHuddleInteraction)
+	app.Delete("/like/:id/:sender", controller.RemoveHuddleCommentLike)
+	app.Delete("/muted-huddles/:user1/:user2", controller.RemoveMutedHuddles)
 
 	return app
 }

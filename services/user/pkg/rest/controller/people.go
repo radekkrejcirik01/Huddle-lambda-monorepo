@@ -141,7 +141,69 @@ func UpdateHiddenPeople(c *fiber.Ctx) error {
 	})
 }
 
-// MuteConversation PUT /mute-conversation
+// MuteHuddles POST /mute-huddles
+func MuteHuddles(c *fiber.Ctx) error {
+	t := &people.MutedHuddle{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := people.MuteHuddles(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: "Could not mute huddles",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Huddles muted successfully",
+	})
+}
+
+// GetMutedHuddles GET /muted-huddles/:username
+func GetMutedHuddles(c *fiber.Ctx) error {
+	username := c.Params("username")
+
+	people, err := people.GetMutedHuddles(database.DB, username)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: "Could not get muted huddles",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(GetMutedHuddlesResponse{
+		Status:  "success",
+		Message: "Muted Huddles successfully got",
+		Data:    people,
+	})
+}
+
+// RemoveMutedHuddles DELETE /muted-huddles/:user1/:user2
+func RemoveMutedHuddles(c *fiber.Ctx) error {
+	user1 := c.Params("user1")
+	user2 := c.Params("user2")
+
+	if err := people.RemoveMutedHuddles(database.DB, user1, user2); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: "Could not unmute huddles",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Huddles muted successfully",
+	})
+}
+
+// MuteConversation POST /mute-conversation
 func MuteConversation(c *fiber.Ctx) error {
 	t := &people.MutedConversation{}
 

@@ -23,6 +23,7 @@ func init() {
 		&people.Invite{},
 		&people.Hide{},
 		&people.MutedConversation{},
+		&people.MutedHuddle{},
 		&huddles.HuddleInteracted{},
 		&huddles.Huddle{},
 		&huddles.HuddleComment{},

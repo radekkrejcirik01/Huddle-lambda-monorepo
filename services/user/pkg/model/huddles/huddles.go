@@ -78,7 +78,7 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 		return err
 	}
 
-	usernames := GetUsernamesFromInvites(acceptedInvites, hiddenUsernames, t.Sender)
+	usernames := GetNewHuddleUsernamesFromInvites(acceptedInvites, hiddenUsernames, t.Sender)
 
 	tokens, getErr := service.GetTokensByUsernames(db, usernames)
 	if getErr != nil {
@@ -168,7 +168,17 @@ func GetHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, erro
 		return nil, err
 	}
 
-	invitesUsernames = GetUsernamesFromInvites(invites, hiddenUsernames, username)
+	var mutedUsernames []string
+	if err := db.
+		Table("muted_huddles").
+		Select("muted").
+		Where("user = ?", username).
+		Find(&mutedUsernames).
+		Error; err != nil {
+		return nil, err
+	}
+
+	invitesUsernames = GetUsernamesFromInvites(invites, hiddenUsernames, mutedUsernames, username)
 
 	// Two days ago in unix time
 	t := time.Now().AddDate(0, 0, -2).Unix()
@@ -317,8 +327,12 @@ func DeleteHuddle(db *gorm.DB, id uint) error {
 	return nil
 }
 
-// Get usernames from invites array
-func GetUsernamesFromInvites(invites []Invite, hiddenUsernames []string, username string) []string {
+// Get new huddles usernames from invites array
+func GetNewHuddleUsernamesFromInvites(
+	invites []Invite,
+	hiddenUsernames []string,
+	username string,
+) []string {
 	var usernames []string
 	for _, invite := range invites {
 		var user string
@@ -330,6 +344,30 @@ func GetUsernamesFromInvites(invites []Invite, hiddenUsernames []string, usernam
 		}
 
 		if !p.IsPersonHidden(hiddenUsernames, user) {
+			usernames = append(usernames, user)
+		}
+	}
+	return usernames
+}
+
+// Get usernames from invites array
+func GetUsernamesFromInvites(
+	invites []Invite,
+	hiddenUsernames []string,
+	mutedUsernames []string,
+	username string,
+) []string {
+	var usernames []string
+	for _, invite := range invites {
+		var user string
+
+		if invite.Sender == username {
+			user = invite.Receiver
+		} else {
+			user = invite.Sender
+		}
+
+		if !p.IsPersonHidden(hiddenUsernames, user) && !p.IsPersonMuted(mutedUsernames, user) {
 			usernames = append(usernames, user)
 		}
 	}

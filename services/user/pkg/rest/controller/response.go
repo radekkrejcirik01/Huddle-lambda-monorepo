@@ -43,6 +43,12 @@ type GetHiddenPeopleResponse struct {
 	Data    []people.HiddenPeopleData `json:"data,omitempty"`
 }
 
+type GetMutedHuddlesResponse struct {
+	Status  string          `json:"status"`
+	Message string          `json:"message,omitempty"`
+	Data    []people.Person `json:"data,omitempty"`
+}
+
 type GetIsConversationMutedResponse struct {
 	Status  string `json:"status"`
 	Message string `json:"message,omitempty"`

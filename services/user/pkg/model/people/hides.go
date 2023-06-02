@@ -150,6 +150,15 @@ func IsPersonHidden(hiddenUsernames []string, username string) bool {
 	return false
 }
 
+func IsPersonMuted(mutedUsernames []string, username string) bool {
+	for _, mutedUsername := range mutedUsernames {
+		if mutedUsername == username {
+			return true
+		}
+	}
+	return false
+}
+
 func getHiddenUsernames(users []string, hiddenUsers []string) []string {
 	var hiddenUsernames []string
 	for _, user := range users {
