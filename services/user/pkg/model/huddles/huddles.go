@@ -80,7 +80,17 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 
 	usernames := GetNewHuddleUsernamesFromInvites(acceptedInvites, hiddenUsernames, t.Sender)
 
-	tokens, getErr := service.GetTokensByUsernames(db, usernames)
+	var notifyUsernames []string
+	if err := db.
+		Table("users").
+		Select("username").
+		Where("username IN ? AND new_huddles_notifications = 1", usernames).
+		Find(&notifyUsernames).
+		Error; err != nil {
+		return err
+	}
+
+	tokens, getErr := service.GetTokensByUsernames(db, notifyUsernames)
 	if getErr != nil {
 		return nil
 	}

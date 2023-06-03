@@ -71,6 +71,20 @@ func AddHuddleComment(db *gorm.DB, t *HuddleComment) error {
 		return nil
 	}
 
+	var commentsNotification int
+	if err := db.
+		Table("users").
+		Select("comments_notifications").
+		Where("username = ?", createdBy).
+		Find(&commentsNotification).
+		Error; err != nil {
+		return err
+	}
+
+	if commentsNotification != 1 {
+		return nil
+	}
+
 	if err := db.
 		Table("users").
 		Select("firstname").
@@ -113,6 +127,20 @@ func AddHuddleMentionComment(db *gorm.DB, t *MentionComment) error {
 	}
 
 	if t.Sender == t.Receiver {
+		return nil
+	}
+
+	var commentsNotification int
+	if err := db.
+		Table("users").
+		Select("mentions_notifications").
+		Where("username = ?", t.Receiver).
+		Find(&commentsNotification).
+		Error; err != nil {
+		return err
+	}
+
+	if commentsNotification != 1 {
 		return nil
 	}
 

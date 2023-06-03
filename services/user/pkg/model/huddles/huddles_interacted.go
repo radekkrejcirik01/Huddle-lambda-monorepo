@@ -47,6 +47,20 @@ func HuddleInteract(db *gorm.DB, t *Interact) error {
 		return err
 	}
 
+	var interactionNotification int
+	if err := db.
+		Table("users").
+		Select("interactions_notifications").
+		Where("username = ?", t.Receiver).
+		Find(&interactionNotification).
+		Error; err != nil {
+		return err
+	}
+
+	if interactionNotification != 1 {
+		return nil
+	}
+
 	tokens := &[]string{}
 	if err := service.GetTokensByUsername(db, tokens, t.Receiver); err != nil {
 		return nil

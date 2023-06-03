@@ -61,6 +61,20 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 		return message, nil
 	}
 
+	var friendInviteNotification int
+	if err := db.
+		Table("users").
+		Select("friends_invites_notifications").
+		Where("username = ?", t.Receiver).
+		Find(&friendInviteNotification).
+		Error; err != nil {
+		return "", err
+	}
+
+	if friendInviteNotification != 1 {
+		return "Invite sent ✅", nil
+	}
+
 	tokens := &[]string{}
 	if err := service.GetTokensByUsername(db, tokens, t.Receiver); err != nil {
 		return "", nil
@@ -74,7 +88,10 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 		Devices: *tokens,
 	}
 
-	service.SendNotification(&fcmNotification)
+	err := service.SendNotification(&fcmNotification)
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	return "Invite sent ✅", nil
 }

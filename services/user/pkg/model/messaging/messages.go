@@ -78,6 +78,20 @@ func SendMessage(db *gorm.DB, t *Send) error {
 		return err
 	}
 
+	var messagesNotification int
+	if err := db.
+		Table("users").
+		Select("messages_notifications").
+		Where("username = ?", receiver).
+		Find(&messagesNotification).
+		Error; err != nil {
+		return err
+	}
+
+	if messagesNotification != 1 {
+		return nil
+	}
+
 	tokens := &[]string{}
 	if err := service.GetTokensByUsername(db, tokens, receiver); err != nil {
 		return nil
