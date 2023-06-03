@@ -49,9 +49,28 @@ func GetUser(c *fiber.Ctx) error {
 	})
 }
 
-// UploadPhoto POST /upload/photo
-func UploadPhoto(c *fiber.Ctx) error {
-	t := &users.UplaodProfilePhotoBody{}
+// GetUserNotifications GET /notifications/:username
+func GetUserNotifications(c *fiber.Ctx) error {
+	username := c.Params("username")
+
+	notifications, err := users.GetUserNotifications(database.DB, username)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(UserNotificationsResponse{
+		Status:  "success",
+		Message: "User notifications successfully got",
+		Data:    notifications,
+	})
+}
+
+// UpdateUserNotification PUT /notification
+func UpdateUserNotification(c *fiber.Ctx) error {
+	t := &users.UpdateNotification{}
 
 	if err := c.BodyParser(t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -60,7 +79,31 @@ func UploadPhoto(c *fiber.Ctx) error {
 		})
 	}
 
-	imageUrl, err := users.UplaodProfilePhoto(database.DB, t)
+	if err := users.UpdateUserNotification(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "User successfully got",
+	})
+}
+
+// UploadPhoto POST /upload/photo
+func UploadPhoto(c *fiber.Ctx) error {
+	t := &users.UploadProfilePhotoBody{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	imageUrl, err := users.UploadProfilePhoto(database.DB, t)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",

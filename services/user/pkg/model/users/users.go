@@ -13,28 +13,49 @@ import (
 )
 
 type User struct {
-	Id           uint   `gorm:"primary_key;auto_increment;not_null" json:"id"`
-	Username     string `json:"username"`
-	Firstname    string `json:"firstname"`
-	ProfilePhoto string `json:"profilePhoto"`
+	Id                          uint   `gorm:"primary_key;auto_increment;not_null" json:"id"`
+	Username                    string `json:"username"`
+	Firstname                   string `json:"firstname"`
+	ProfilePhoto                string `json:"profilePhoto"`
+	FriendsInvitesNotifications int    `gorm:"default:1"`
+	NewHuddlesNotifications     int    `gorm:"default:1"`
+	InteractionsNotifications   int    `gorm:"default:1"`
+	CommentsNotifications       int    `gorm:"default:1"`
+	MentionsNotifications       int    `gorm:"default:1"`
+	MessagesNotifications       int    `gorm:"default:1"`
+}
+
+type Notification struct {
+	FriendsInvitesNotifications int `json:"friendsInvitesNotifications"`
+	NewHuddlesNotifications     int `json:"newHuddlesNotifications"`
+	InteractionsNotifications   int `json:"interactionsNotifications"`
+	CommentsNotifications       int `json:"commentsNotifications"`
+	MentionsNotifications       int `json:"mentionsNotifications"`
+	MessagesNotifications       int `json:"messagesNotifications"`
 }
 
 func (User) TableName() string {
 	return "users"
 }
 
-type UplaodProfilePhotoBody struct {
+type UpdateNotification struct {
+	Username     string
+	Notification string
+	Value        int
+}
+
+type UploadProfilePhotoBody struct {
 	Username string
 	Buffer   string
 	FileName string
 }
 
-// Create new user in users table
+// CreateUser in users table
 func CreateUser(db *gorm.DB, t *User) error {
 	return db.Create(t).Error
 }
 
-// Get user from users table
+// GetUser from users table
 func GetUser(db *gorm.DB, username string) (User, error) {
 	var user User
 	err := db.Table("users").Where("username = ?", username).First(&user).Error
@@ -44,7 +65,39 @@ func GetUser(db *gorm.DB, username string) (User, error) {
 	return user, nil
 }
 
-func UplaodProfilePhoto(db *gorm.DB, t *UplaodProfilePhotoBody) (string, error) {
+// GetUserNotifications from users table
+func GetUserNotifications(db *gorm.DB, username string) (Notification, error) {
+	var notifications Notification
+
+	if err := db.
+		Table("users").
+		Select(`
+			friends_invites_notifications,
+			new_huddles_notifications,
+			interactions_notifications,
+			comments_notifications,
+			mentions_notifications,
+			messages_notifications`).
+		Where("username = ?", username).
+		First(&notifications).
+		Error; err != nil {
+		return Notification{}, err
+	}
+
+	return notifications, nil
+}
+
+// UpdateUserNotification in users table
+func UpdateUserNotification(db *gorm.DB, t *UpdateNotification) error {
+	return db.
+		Table("users").
+		Where("username = ?", t.Username).
+		Update(t.Notification, t.Value).
+		Error
+}
+
+// UploadProfilePhoto to S3 bucket
+func UploadProfilePhoto(db *gorm.DB, t *UploadProfilePhotoBody) (string, error) {
 	accessKey, secretAccessKey := database.GetCredentials()
 
 	sess := session.Must(session.NewSession(

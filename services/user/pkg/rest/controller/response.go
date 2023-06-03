@@ -18,6 +18,12 @@ type UserResponse struct {
 	Data    users.User `json:"data,omitempty"`
 }
 
+type UserNotificationsResponse struct {
+	Status  string             `json:"status"`
+	Message string             `json:"message,omitempty"`
+	Data    users.Notification `json:"data,omitempty"`
+}
+
 type PeopleNumberResponse struct {
 	Status       string `json:"status"`
 	Message      string `json:"message,omitempty"`
