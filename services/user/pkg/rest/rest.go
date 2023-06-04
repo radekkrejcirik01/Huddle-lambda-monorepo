@@ -39,6 +39,7 @@ func Create() *fiber.App {
 	app.Post("/message", controller.SendMessage)
 	app.Post("/mute-conversation", controller.MuteConversation)
 	app.Post("/mute-huddles", controller.MuteHuddles)
+	app.Post("/device", controller.SaveDevice)
 
 	app.Put("/person", controller.AcceptPersonInvite)
 	app.Put("/huddle", controller.UpdateHuddle)
@@ -50,6 +51,7 @@ func Create() *fiber.App {
 	app.Delete("/interaction/:id/:username", controller.RemoveHuddleInteraction)
 	app.Delete("/like/:id/:sender", controller.RemoveHuddleCommentLike)
 	app.Delete("/muted-huddles/:user1/:user2", controller.RemoveMutedHuddles)
+	app.Delete("/device/:username", controller.DeleteDevice)
 
 	return app
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/devices"
 	"log"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -33,6 +34,7 @@ func init() {
 		&messaging.PersonInConversation{},
 		&messaging.LastReadMessage{},
 		&users.User{},
+		&devices.Device{},
 	); err != nil {
 		log.Fatal(err)
 	}
