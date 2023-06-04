@@ -18,6 +18,7 @@ type Huddle struct {
 	Id        uint `gorm:"primary_key;auto_increment;not_null"`
 	CreatedBy string
 	What      string
+	Color     int
 	Created   int64 `gorm:"autoCreateTime"`
 }
 
@@ -28,6 +29,7 @@ func (Huddle) TableName() string {
 type NewHuddle struct {
 	Sender string
 	What   string
+	Color  int
 }
 
 type HuddleData struct {
@@ -36,6 +38,7 @@ type HuddleData struct {
 	Name           string `json:"name"`
 	ProfilePhoto   string `json:"profilePhoto"`
 	What           string `json:"what"`
+	Color          int    `json:"color"`
 	Interacted     int    `json:"interacted,omitempty"`
 	CommentsNumber int    `json:"commentsNumber,omitempty"`
 }
@@ -55,6 +58,7 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 	huddle := Huddle{
 		CreatedBy: t.Sender,
 		What:      t.What,
+		Color:     t.Color,
 	}
 	if err := db.Table("huddles").Create(&huddle).Error; err != nil {
 		return err
@@ -142,6 +146,7 @@ func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, 
 			Id:           int(huddle.Id),
 			CreatedBy:    huddle.CreatedBy,
 			Name:         profileInfo.Firstname,
+			Color:        huddle.Color,
 			ProfilePhoto: profileInfo.ProfilePhoto,
 			What:         huddle.What,
 			Interacted:   interacted,
@@ -254,6 +259,7 @@ func GetHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, erro
 			Name:           profileInfo.Firstname,
 			ProfilePhoto:   profileInfo.ProfilePhoto,
 			What:           huddle.What,
+			Color:          huddle.Color,
 			Interacted:     interacted,
 			CommentsNumber: commentsNumber,
 		})
