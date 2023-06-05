@@ -37,6 +37,12 @@ type Send struct {
 	FileName       *string
 }
 
+type Info struct {
+	Firstname             string
+	ProfilePhoto          string
+	MessagesNotifications int
+}
+
 type MessageData struct {
 	Id      uint   `json:"id"`
 	Sender  string `json:"sender"`
@@ -78,17 +84,17 @@ func SendMessage(db *gorm.DB, t *Send) error {
 		return err
 	}
 
-	var messagesNotification int
+	var info Info
 	if err := db.
 		Table("users").
-		Select("messages_notifications").
+		Select("firstname, profile_photo, messages_notifications").
 		Where("username = ?", receiver).
-		Find(&messagesNotification).
+		Find(&info).
 		Error; err != nil {
 		return err
 	}
 
-	if messagesNotification != 1 {
+	if info.MessagesNotifications != 1 {
 		return nil
 	}
 
@@ -104,11 +110,14 @@ func SendMessage(db *gorm.DB, t *Send) error {
 	}
 
 	fcmNotification := service.FcmNotification{
-		Sender:  t.Sender,
-		Type:    "message",
+		Data: map[string]interface{}{
+			"type":           "invite",
+			"conversationId": t.ConversationId,
+			"name":           info.Firstname,
+			"profilePhoto":   info.ProfilePhoto,
+		},
 		Title:   t.Name,
 		Body:    body,
-		Sound:   "notification.wav",
 		Devices: *tokens,
 	}
 

@@ -9,11 +9,9 @@ import (
 )
 
 type FcmNotification struct {
-	Sender  string
-	Type    string
+	Data    map[string]interface{}
 	Title   string
 	Body    string
-	Sound   string
 	Devices []string
 }
 
@@ -39,16 +37,13 @@ func SendNotification(t *FcmNotification) error {
 
 	for _, token := range tokens {
 		msg := &fcm.Message{
-			To: token,
-			Data: map[string]interface{}{
-				"type":   t.Type,
-				"sender": t.Sender,
-			},
+			To:   token,
+			Data: t.Data,
 			Notification: &fcm.Notification{
 				Title: t.Title,
 				Body:  t.Body,
 				Badge: "1",
-				Sound: t.Sound,
+				Sound: "default",
 			},
 		}
 

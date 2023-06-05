@@ -27,6 +27,11 @@ type Interaction struct {
 	Confirmed int
 }
 
+type Info struct {
+	Firstname                 string
+	InteractionsNotifications int
+}
+
 type UserInteracted struct {
 	Username     string `json:"username"`
 	Firstname    string `json:"name"`
@@ -47,17 +52,17 @@ func HuddleInteract(db *gorm.DB, t *Interact) error {
 		return err
 	}
 
-	var interactionNotification int
+	var info Info
 	if err := db.
 		Table("users").
-		Select("interactions_notifications").
+		Select("firstname, interactions_notifications").
 		Where("username = ?", t.Receiver).
-		Find(&interactionNotification).
+		Find(&info).
 		Error; err != nil {
 		return err
 	}
 
-	if interactionNotification != 1 {
+	if info.InteractionsNotifications != 1 {
 		return nil
 	}
 
@@ -67,10 +72,11 @@ func HuddleInteract(db *gorm.DB, t *Interact) error {
 	}
 
 	fcmNotification := service.FcmNotification{
-		Sender:  t.Sender,
-		Type:    huddleType,
-		Body:    t.Sender + " interacted with your Huddle 👋",
-		Sound:   "default",
+		Data: map[string]interface{}{
+			"type":     huddleType,
+			"huddleId": t.HuddleId,
+		},
+		Body:    info.Firstname + " interacted 👋",
 		Devices: *tokens,
 	}
 

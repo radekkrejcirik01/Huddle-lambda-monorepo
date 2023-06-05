@@ -100,8 +100,10 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 	}
 
 	hangoutNotification := service.FcmNotification{
-		Sender:  t.Sender,
-		Type:    huddleType,
+		Data: map[string]interface{}{
+			"type":     huddleType,
+			"huddleId": huddle.Id,
+		},
 		Body:    t.Sender + " added a new Huddle: " + t.What,
 		Devices: tokens,
 	}
@@ -322,6 +324,7 @@ func GetHuddleById(db *gorm.DB, id uint, username string) (HuddleData, error) {
 		Id:           int(huddle.Id),
 		CreatedBy:    huddle.CreatedBy,
 		Name:         profile.Firstname,
+		Color:        huddle.Color,
 		ProfilePhoto: profile.ProfilePhoto,
 		What:         huddle.What,
 		Interacted:   interacted,

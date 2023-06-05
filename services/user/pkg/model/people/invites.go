@@ -81,10 +81,10 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 	}
 
 	fcmNotification := service.FcmNotification{
-		Sender:  t.Sender,
-		Type:    "people",
+		Data: map[string]interface{}{
+			"type": "people",
+		},
 		Body:    t.Sender + " sends a friend invite",
-		Sound:   "default",
 		Devices: *tokens,
 	}
 
@@ -203,10 +203,10 @@ func AcceptPersonInvite(db *gorm.DB, t *Invite) error {
 	}
 
 	fcmNotification := service.FcmNotification{
-		Sender:  t.Sender,
-		Type:    "people",
+		Data: map[string]interface{}{
+			"type": "invite",
+		},
 		Body:    t.Sender + " accepted friend invite 🙌",
-		Sound:   "default",
 		Devices: *tokens,
 	}
 
