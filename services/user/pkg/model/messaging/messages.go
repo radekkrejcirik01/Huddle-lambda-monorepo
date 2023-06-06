@@ -118,6 +118,7 @@ func SendMessage(db *gorm.DB, t *Send) error {
 		},
 		Title:   t.Name,
 		Body:    body,
+		Sound:   "default",
 		Devices: *tokens,
 	}
 

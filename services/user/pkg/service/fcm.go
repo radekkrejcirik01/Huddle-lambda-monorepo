@@ -12,6 +12,7 @@ type FcmNotification struct {
 	Data    map[string]interface{}
 	Title   string
 	Body    string
+	Sound   string
 	Devices []string
 }
 
@@ -43,7 +44,7 @@ func SendNotification(t *FcmNotification) error {
 				Title: t.Title,
 				Body:  t.Body,
 				Badge: "1",
-				Sound: "default",
+				Sound: t.Sound,
 			},
 		}
 

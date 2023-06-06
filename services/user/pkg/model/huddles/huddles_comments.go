@@ -106,6 +106,7 @@ func AddHuddleComment(db *gorm.DB, t *HuddleComment) error {
 		},
 		Title:   name + " added a comment",
 		Body:    t.Message,
+		Sound:   "default",
 		Devices: tokens,
 	}
 
@@ -165,6 +166,7 @@ func AddHuddleMentionComment(db *gorm.DB, t *MentionComment) error {
 		},
 		Title:   name + " mentioned you",
 		Body:    t.Message,
+		Sound:   "default",
 		Devices: tokens,
 	}
 

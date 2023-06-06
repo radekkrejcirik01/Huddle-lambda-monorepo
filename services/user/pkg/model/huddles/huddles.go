@@ -28,6 +28,7 @@ func (Huddle) TableName() string {
 
 type NewHuddle struct {
 	Sender string
+	Name   string
 	What   string
 	Color  int
 }
@@ -104,7 +105,8 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 			"type":     huddleType,
 			"huddleId": huddle.Id,
 		},
-		Body:    t.Sender + " added a new Huddle: " + t.What,
+		Title:   t.Name + " added a new Huddle",
+		Body:    t.What,
 		Devices: tokens,
 	}
 

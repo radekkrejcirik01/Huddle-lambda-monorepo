@@ -85,6 +85,7 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 			"type": "people",
 		},
 		Body:    t.Sender + " sends a friend invite",
+		Sound:   "default",
 		Devices: *tokens,
 	}
 
@@ -207,6 +208,7 @@ func AcceptPersonInvite(db *gorm.DB, t *Invite) error {
 			"type": "invite",
 		},
 		Body:    t.Sender + " accepted friend invite 🙌",
+		Sound:   "default",
 		Devices: *tokens,
 	}
 

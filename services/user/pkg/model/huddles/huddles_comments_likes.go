@@ -66,6 +66,7 @@ func LikeHuddleComment(db *gorm.DB, t *Like) error {
 			"huddleId": t.HuddleId,
 		},
 		Body:    name + " liked your comment",
+		Sound:   "default",
 		Devices: tokens,
 	}
 
