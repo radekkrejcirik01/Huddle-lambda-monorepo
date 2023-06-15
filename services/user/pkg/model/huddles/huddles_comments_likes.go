@@ -46,6 +46,10 @@ func LikeHuddleComment(db *gorm.DB, t *Like) error {
 		return err
 	}
 
+	if t.Sender == t.Receiver {
+		return nil
+	}
+
 	if err := db.
 		Table("users").
 		Select("firstname").

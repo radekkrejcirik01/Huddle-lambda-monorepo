@@ -2,8 +2,6 @@ package messaging
 
 import (
 	"fmt"
-	"time"
-
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"gorm.io/gorm"
 )
@@ -29,7 +27,7 @@ type Chat struct {
 	ProfilePhoto string `json:"profilePhoto,omitempty"`
 	LastMessage  string `json:"lastMessage,omitempty"`
 	IsRead       int    `json:"isRead,omitempty"`
-	Time         string `json:"time"`
+	Time         int64  `json:"time"`
 }
 
 type LastMessage struct {
@@ -148,7 +146,6 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 			people,
 		)
 		isRead := getIsRead(lastReadMessages, lastMessage, username)
-		time := time.Unix(lastMessage.Time, 0).Format(timeFormat)
 
 		chats = append(chats, Chat{
 			Id:           lastMessage.ConversationId,
@@ -156,7 +153,7 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 			ProfilePhoto: profilePhoto,
 			LastMessage:  lastMessage.Message,
 			IsRead:       isRead,
-			Time:         time,
+			Time:         lastMessage.Time,
 		})
 	}
 

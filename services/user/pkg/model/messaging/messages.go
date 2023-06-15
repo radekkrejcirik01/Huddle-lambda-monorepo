@@ -111,7 +111,7 @@ func SendMessage(db *gorm.DB, t *Send) error {
 
 	fcmNotification := service.FcmNotification{
 		Data: map[string]interface{}{
-			"type":           "invite",
+			"type":           "message",
 			"conversationId": t.ConversationId,
 			"name":           info.Firstname,
 			"profilePhoto":   info.ProfilePhoto,
