@@ -33,6 +33,7 @@ func init() {
 		&messaging.Message{},
 		&messaging.PersonInConversation{},
 		&messaging.LastReadMessage{},
+		&messaging.ConversationLike{},
 		&users.User{},
 		&devices.Device{},
 	); err != nil {

@@ -76,7 +76,7 @@ func HuddleInteract(db *gorm.DB, t *Interact) error {
 			"type":     huddleType,
 			"huddleId": t.HuddleId,
 		},
-		Body:    info.Firstname + " interacted 👋",
+		Body:    info.Firstname + " sends an interest 👋",
 		Sound:   "default",
 		Devices: *tokens,
 	}

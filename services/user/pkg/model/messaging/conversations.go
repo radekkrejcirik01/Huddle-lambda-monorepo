@@ -6,8 +6,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const timeFormat = "2006-01-02 15:04:05"
-
 type Conversation struct {
 	Id uint `gorm:"primary_key;auto_increment;not_null"`
 }
@@ -22,18 +20,19 @@ type Create struct {
 }
 
 type Chat struct {
-	Id           uint   `json:"id"`
+	Id           int    `json:"id"`
 	Name         string `json:"name"`
 	ProfilePhoto string `json:"profilePhoto,omitempty"`
 	LastMessage  string `json:"lastMessage,omitempty"`
 	IsRead       int    `json:"isRead,omitempty"`
+	IsLiked      int    `json:"isLiked,omitempty"`
 	Time         int64  `json:"time"`
 }
 
 type LastMessage struct {
 	Id             uint
 	Sender         string
-	ConversationId uint
+	ConversationId int
 	Message        string
 	Time           int64
 }
@@ -47,8 +46,8 @@ func CreateConversation(db *gorm.DB, t *Create) (uint, error) {
 	}
 
 	create := []PersonInConversation{
-		{ConversationId: conversaion.Id, Username: t.Sender},
-		{ConversationId: conversaion.Id, Username: t.Receiver},
+		{ConversationId: int(conversaion.Id), Username: t.Sender},
+		{ConversationId: int(conversaion.Id), Username: t.Receiver},
 	}
 	if err := db.Table("people_in_conversations").Create(&create).Error; err != nil {
 		return 0, err
@@ -64,6 +63,7 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 	var lastMessages []LastMessage
 	var lastReadMessages []LastReadMessage
 	var people []p.Person
+	var likedConversations []ConversationLike
 
 	var idCondition string
 	if lastId != "" {
@@ -71,17 +71,10 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 	}
 	// Get last messages by username
 	if err := db.
-		Raw(`
-			SELECT
-				id,
-				sender,
-				conversation_id,
-				message,
-				time
-			FROM
-				messages
-			WHERE
-				`+idCondition+`id IN(
+		Table("messages").
+		Select("id, sender, conversation_id, message, time").
+		Where(idCondition+`
+					id IN(
 					SELECT
 						MAX(id)
 						FROM messages
@@ -93,31 +86,26 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 								username = ?)
 						GROUP BY
 							conversation_id)
-			ORDER BY
-				id DESC
-			LIMIT 15`, username).
+					ORDER BY
+						id DESC
+					LIMIT 15`, username).
 		Find(&lastMessages).Error; err != nil {
-		return []Chat{}, err
+		return nil, err
 	}
 
 	if len(lastMessages) == 0 {
-		return []Chat{}, nil
+		return nil, nil
 	}
 
 	conversationsIds := getConversationsIds(lastMessages)
 
 	// Get usernames from conversations
 	if err := db.
-		Raw(`
-			SELECT
-				conversation_id, username
-			FROM
-				people_in_conversations
-			WHERE
-				conversation_id IN ?
-				AND username != ?`, conversationsIds, username).
-		Find(&peopleInConversations).Error; err != nil {
-		return []Chat{}, err
+		Table("people_in_conversations").
+		Where("conversation_id IN ? AND username != ?", conversationsIds, username).
+		Find(&peopleInConversations).
+		Error; err != nil {
+		return nil, err
 	}
 
 	if err := db.
@@ -125,7 +113,7 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 		Where("username = ? AND conversation_id IN ?", username, conversationsIds).
 		Find(&lastReadMessages).
 		Error; err != nil {
-		return []Chat{}, err
+		return nil, err
 	}
 
 	usernames := getUsernamesFromPeopleInConversations(peopleInConversations)
@@ -136,7 +124,15 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 		Where("username IN ?", usernames).
 		Find(&people).
 		Error; err != nil {
-		return []Chat{}, err
+		return nil, err
+	}
+
+	if err := db.
+		Table("conversations_likes").
+		Where("sender = ?", username).
+		Find(&likedConversations).
+		Error; err != nil {
+		return nil, err
 	}
 
 	for _, lastMessage := range lastMessages {
@@ -146,6 +142,7 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 			people,
 		)
 		isRead := getIsRead(lastReadMessages, lastMessage, username)
+		isLiked := getIsLiked(lastMessage, likedConversations)
 
 		chats = append(chats, Chat{
 			Id:           lastMessage.ConversationId,
@@ -153,14 +150,15 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 			ProfilePhoto: profilePhoto,
 			LastMessage:  lastMessage.Message,
 			IsRead:       isRead,
+			IsLiked:      isLiked,
 			Time:         lastMessage.Time,
 		})
 	}
 
-	return chats, nil
+	return rearrangeChats(chats), nil
 }
 
-func containsUint(s []uint, e uint) bool {
+func containsInt(s []int, e int) bool {
 	for _, a := range s {
 		if a == e {
 			return true
@@ -178,11 +176,11 @@ func containsString(s []string, e string) bool {
 	return false
 }
 
-func getConversationsIds(lastMessages []LastMessage) []uint {
-	var ids []uint
+func getConversationsIds(lastMessages []LastMessage) []int {
+	var ids []int
 
 	for _, lastMessage := range lastMessages {
-		if !containsUint(ids, lastMessage.ConversationId) {
+		if !containsInt(ids, lastMessage.ConversationId) {
 			ids = append(ids, lastMessage.ConversationId)
 		}
 	}
@@ -203,7 +201,7 @@ func getUsernamesFromPeopleInConversations(peopleInConversations []PersonInConve
 }
 
 func getPeopleInfo(
-	conversationId uint,
+	conversationId int,
 	peopleInConversations []PersonInConversation,
 	people []p.Person,
 ) (string, string) {
@@ -236,6 +234,29 @@ func getIsRead(lastReadMessages []LastReadMessage, lastMessage LastMessage, user
 			return 1
 		}
 	}
-
 	return 0
+}
+
+func getIsLiked(lastMessage LastMessage, likedConversations []ConversationLike) int {
+	for _, likedC := range likedConversations {
+		if likedC.ConversationId == lastMessage.ConversationId {
+			return 1
+		}
+	}
+	return 0
+}
+
+func rearrangeChats(chats []Chat) []Chat {
+	var liked []Chat
+	var notLiked []Chat
+
+	for _, chat := range chats {
+		if chat.IsLiked == 1 {
+			liked = append(liked, chat)
+		} else {
+			notLiked = append(notLiked, chat)
+		}
+	}
+
+	return append(liked, notLiked...)
 }

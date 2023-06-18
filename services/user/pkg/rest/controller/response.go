@@ -111,6 +111,12 @@ type GetMessagesByUsernamesResponse struct {
 	ConversationId uint                    `json:"conversationId,omitempty"`
 }
 
+type GetIsConversationLikedResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+	IsLiked int    `json:"isLiked,omitempty"`
+}
+
 type UploadPhotoResponse struct {
 	Status   string `json:"status"`
 	Message  string `json:"message,omitempty"`

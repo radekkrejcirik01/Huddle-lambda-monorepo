@@ -29,7 +29,6 @@ func (Message) TableName() string {
 
 type Send struct {
 	Sender         string
-	Name           string
 	ConversationId uint
 	Message        string
 	Time           string
@@ -38,6 +37,7 @@ type Send struct {
 }
 
 type Info struct {
+	Username              string
 	Firstname             string
 	ProfilePhoto          string
 	MessagesNotifications int
@@ -84,17 +84,31 @@ func SendMessage(db *gorm.DB, t *Send) error {
 		return err
 	}
 
-	var info Info
+	var mutedConversation []string
+	if err := db.
+		Table("muted_conversations").
+		Select("user").
+		Where("conversation_id = ?", t.ConversationId).
+		Find(&mutedConversation).
+		Error; err != nil {
+		return err
+	}
+
+	if len(mutedConversation) > 0 {
+		return nil
+	}
+
+	var info []Info
 	if err := db.
 		Table("users").
-		Select("firstname, profile_photo, messages_notifications").
-		Where("username = ?", receiver).
+		Select("username, firstname, profile_photo, messages_notifications").
+		Where("username IN ?", []string{receiver, t.Sender}).
 		Find(&info).
 		Error; err != nil {
 		return err
 	}
 
-	if info.MessagesNotifications != 1 {
+	if !receiverNotificationsEnabled(info, receiver) {
 		return nil
 	}
 
@@ -109,14 +123,16 @@ func SendMessage(db *gorm.DB, t *Send) error {
 		body = "Sends a photo"
 	}
 
+	senderInfo := getSenderInfo(info, t.Sender)
+
 	fcmNotification := service.FcmNotification{
 		Data: map[string]interface{}{
 			"type":           "message",
 			"conversationId": t.ConversationId,
-			"name":           info.Firstname,
-			"profilePhoto":   info.ProfilePhoto,
+			"name":           senderInfo.Firstname,
+			"profilePhoto":   senderInfo.ProfilePhoto,
 		},
-		Title:   t.Name,
+		Title:   senderInfo.Firstname,
 		Body:    body,
 		Sound:   "default",
 		Devices: *tokens,
@@ -229,4 +245,22 @@ func UplaodChatPhoto(db *gorm.DB, username string, buffer string, fileName strin
 	}
 
 	return result.Location, nil
+}
+
+func receiverNotificationsEnabled(info []Info, receiver string) bool {
+	for _, i := range info {
+		if i.Username == receiver && i.MessagesNotifications == 1 {
+			return true
+		}
+	}
+	return false
+}
+
+func getSenderInfo(info []Info, sender string) *Info {
+	for _, i := range info {
+		if i.Username == sender {
+			return &i
+		}
+	}
+	return nil
 }

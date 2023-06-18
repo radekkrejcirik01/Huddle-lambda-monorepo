@@ -2,7 +2,7 @@ package messaging
 
 type PersonInConversation struct {
 	Id             uint `gorm:"primary_key;auto_increment;not_null"`
-	ConversationId uint
+	ConversationId int
 	Username       string
 }
 
