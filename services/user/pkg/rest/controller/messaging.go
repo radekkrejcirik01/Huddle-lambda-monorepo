@@ -166,3 +166,27 @@ func RemoveConversationLike(c *fiber.Ctx) error {
 		Message: "Conversation like removed",
 	})
 }
+
+// MessageReact POST /message-react
+func MessageReact(c *fiber.Ctx) error {
+	t := &messaging.SendReaction{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := messaging.MessageReact(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Successfully reacted to message",
+	})
+}

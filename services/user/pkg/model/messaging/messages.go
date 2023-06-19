@@ -20,7 +20,7 @@ type Message struct {
 	ConversationId uint
 	Message        string
 	Time           int64 `gorm:"autoCreateTime"`
-	Url            *string
+	Url            string
 }
 
 func (Message) TableName() string {
@@ -43,12 +43,18 @@ type Info struct {
 	MessagesNotifications int
 }
 
+type Reaction struct {
+	MessageId int
+	Value     string
+}
+
 type MessageData struct {
-	Id      uint   `json:"id"`
-	Sender  string `json:"sender"`
-	Message string `json:"message"`
-	Time    string `json:"time"`
-	Url     string `json:"url,omitempty"`
+	Id        uint     `json:"id"`
+	Sender    string   `json:"sender"`
+	Message   string   `json:"message"`
+	Time      int64    `json:"time"`
+	Url       string   `json:"url,omitempty"`
+	Reactions []string `json:"reactions,omitempty"`
 }
 
 // Add message to messages table
@@ -68,7 +74,7 @@ func SendMessage(db *gorm.DB, t *Send) error {
 		Sender:         t.Sender,
 		ConversationId: t.ConversationId,
 		Message:        t.Message,
-		Url:            &photoUrl,
+		Url:            photoUrl,
 	}
 
 	if err := db.Table("messages").Create(&message).Error; err != nil {
@@ -88,7 +94,7 @@ func SendMessage(db *gorm.DB, t *Send) error {
 	if err := db.
 		Table("muted_conversations").
 		Select("user").
-		Where("conversation_id = ?", t.ConversationId).
+		Where("user = ? AND conversation_id = ?", receiver, t.ConversationId).
 		Find(&mutedConversation).
 		Error; err != nil {
 		return err
@@ -108,7 +114,7 @@ func SendMessage(db *gorm.DB, t *Send) error {
 		return err
 	}
 
-	if !receiverNotificationsEnabled(info, receiver) {
+	if !receiveNotificationsEnabled(info, receiver) {
 		return nil
 	}
 
@@ -141,9 +147,11 @@ func SendMessage(db *gorm.DB, t *Send) error {
 	return service.SendNotification(&fcmNotification)
 }
 
-// Get conversation messages from messages table
+// GetConversation messages and reactions from messages table
 func GetConversation(db *gorm.DB, conversaionId int, lastId string) ([]MessageData, error) {
-	var message []MessageData
+	var messages []Message
+	var messagesReactions []Reaction
+	var messagesData []MessageData
 
 	var idCondition string
 	if lastId != "" {
@@ -155,40 +163,61 @@ func GetConversation(db *gorm.DB, conversaionId int, lastId string) ([]MessageDa
 		Where(idCondition+"conversation_id = ?", conversaionId).
 		Order("id desc").
 		Limit(20).
-		Find(&message).
+		Find(&messages).
 		Error; err != nil {
 		return nil, err
 	}
 
-	return message, nil
+	if len(messages) == 0 {
+		return nil, nil
+	}
+
+	messagesIds := getMessagesIds(messages)
+
+	if err := db.
+		Table("messages_reactions").
+		Where("conversation_id = ? AND message_id IN ?", conversaionId, messagesIds).
+		Find(&messagesReactions).
+		Error; err != nil {
+		return nil, err
+	}
+
+	for _, message := range messages {
+		reactions := getReactions(message.Id, messagesReactions)
+
+		messagesData = append(messagesData, MessageData{
+			Id:        message.Id,
+			Sender:    message.Sender,
+			Message:   message.Message,
+			Time:      message.Time,
+			Url:       message.Url,
+			Reactions: reactions,
+		})
+	}
+
+	return messagesData, nil
 }
 
-// Get messages by usernames from messages table
+// GetMessagesByUsernames and reactions from messages table
 func GetMessagesByUsernames(db *gorm.DB, user1 string, user2 string) ([]MessageData, uint, error) {
-	var message []MessageData
+	var messages []Message
+	var messagesReactions []Reaction
+	var messagesData []MessageData
 	var conversaionId int
 
 	// Get conversation id by 2 usernames
 	if err := db.
-		Raw(`
+		Table("people_in_conversations").
+		Select("conversation_id").
+		Where(`conversation_id IN(
 			SELECT
-				conversation_id
-			FROM
-				people_in_conversations
+				conversation_id FROM people_in_conversations
 			WHERE
-				conversation_id IN(
-					SELECT
-						conversation_id FROM people_in_conversations
-					WHERE
-						username IN ?
-					GROUP BY
-						conversation_id
-					HAVING
-						COUNT(conversation_id) = 2)
+				username IN ?
 			GROUP BY
 				conversation_id
 			HAVING
-				COUNT(conversation_id) = 2`, []string{user1, user2}).
+				COUNT(conversation_id) = 2)`, []string{user1, user2}).
 		Find(&conversaionId).
 		Error; err != nil {
 		return nil, 0, err
@@ -208,12 +237,39 @@ func GetMessagesByUsernames(db *gorm.DB, user1 string, user2 string) ([]MessageD
 		Where("conversation_id = ?", conversaionId).
 		Order("id desc").
 		Limit(20).
-		Find(&message).
+		Find(&messages).
 		Error; err != nil {
 		return nil, 0, err
 	}
 
-	return message, uint(conversaionId), nil
+	if len(messages) == 0 {
+		return nil, uint(conversaionId), nil
+	}
+
+	messagesIds := getMessagesIds(messages)
+
+	if err := db.
+		Table("messages_reactions").
+		Where("conversation_id = ? AND message_id IN ?", conversaionId, messagesIds).
+		Find(&messagesReactions).
+		Error; err != nil {
+		return nil, 0, err
+	}
+
+	for _, message := range messages {
+		reactions := getReactions(message.Id, messagesReactions)
+
+		messagesData = append(messagesData, MessageData{
+			Id:        message.Id,
+			Sender:    message.Sender,
+			Message:   message.Message,
+			Time:      message.Time,
+			Url:       message.Url,
+			Reactions: reactions,
+		})
+	}
+
+	return messagesData, uint(conversaionId), nil
 }
 
 func UplaodChatPhoto(db *gorm.DB, username string, buffer string, fileName string) (string, error) {
@@ -247,7 +303,7 @@ func UplaodChatPhoto(db *gorm.DB, username string, buffer string, fileName strin
 	return result.Location, nil
 }
 
-func receiverNotificationsEnabled(info []Info, receiver string) bool {
+func receiveNotificationsEnabled(info []Info, receiver string) bool {
 	for _, i := range info {
 		if i.Username == receiver && i.MessagesNotifications == 1 {
 			return true
@@ -263,4 +319,22 @@ func getSenderInfo(info []Info, sender string) *Info {
 		}
 	}
 	return nil
+}
+
+func getReactions(messageId uint, reactions []Reaction) []string {
+	var r []string
+	for _, reaction := range reactions {
+		if reaction.MessageId == int(messageId) {
+			r = append(r, reaction.Value)
+		}
+	}
+	return r
+}
+
+func getMessagesIds(messages []Message) []uint {
+	var ids []uint
+	for _, message := range messages {
+		ids = append(ids, message.Id)
+	}
+	return ids
 }

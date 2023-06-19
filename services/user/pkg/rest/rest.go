@@ -42,6 +42,7 @@ func Create() *fiber.App {
 	app.Post("/mute-conversation", controller.MuteConversation)
 	app.Post("/mute-huddles", controller.MuteHuddles)
 	app.Post("/device", controller.SaveDevice)
+	app.Post("/message-react", controller.MessageReact)
 
 	app.Put("/person", controller.AcceptPersonInvite)
 	app.Put("/huddle", controller.UpdateHuddle)
