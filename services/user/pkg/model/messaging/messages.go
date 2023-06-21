@@ -55,6 +55,7 @@ type MessageData struct {
 	Time      int64    `json:"time"`
 	Url       string   `json:"url,omitempty"`
 	Reactions []string `json:"reactions,omitempty"`
+	ReadBy    []string `json:"readBy,omitempty"`
 }
 
 // Add message to messages table
@@ -148,10 +149,11 @@ func SendMessage(db *gorm.DB, t *Send) error {
 }
 
 // GetConversation messages and reactions from messages table
-func GetConversation(db *gorm.DB, conversaionId int, lastId string) ([]MessageData, error) {
+func GetConversation(db *gorm.DB, conversationId int, lastId string) ([]MessageData, error) {
 	var messages []Message
 	var messagesReactions []Reaction
 	var messagesData []MessageData
+	var lastReadMessages []LastReadMessage
 
 	var idCondition string
 	if lastId != "" {
@@ -160,7 +162,7 @@ func GetConversation(db *gorm.DB, conversaionId int, lastId string) ([]MessageDa
 
 	if err := db.
 		Table("messages").
-		Where(idCondition+"conversation_id = ?", conversaionId).
+		Where(idCondition+"conversation_id = ?", conversationId).
 		Order("id desc").
 		Limit(20).
 		Find(&messages).
@@ -176,14 +178,23 @@ func GetConversation(db *gorm.DB, conversaionId int, lastId string) ([]MessageDa
 
 	if err := db.
 		Table("messages_reactions").
-		Where("conversation_id = ? AND message_id IN ?", conversaionId, messagesIds).
+		Where("conversation_id = ? AND message_id IN ?", conversationId, messagesIds).
 		Find(&messagesReactions).
+		Error; err != nil {
+		return nil, err
+	}
+
+	if err := db.
+		Table("last_read_messages").
+		Where("conversation_id = ?", conversationId).
+		Find(&lastReadMessages).
 		Error; err != nil {
 		return nil, err
 	}
 
 	for _, message := range messages {
 		reactions := getReactions(message.Id, messagesReactions)
+		readBy := getReadBy(lastReadMessages, message.Id, message.Sender)
 
 		messagesData = append(messagesData, MessageData{
 			Id:        message.Id,
@@ -192,6 +203,7 @@ func GetConversation(db *gorm.DB, conversaionId int, lastId string) ([]MessageDa
 			Time:      message.Time,
 			Url:       message.Url,
 			Reactions: reactions,
+			ReadBy:    readBy,
 		})
 	}
 
@@ -203,7 +215,8 @@ func GetMessagesByUsernames(db *gorm.DB, user1 string, user2 string) ([]MessageD
 	var messages []Message
 	var messagesReactions []Reaction
 	var messagesData []MessageData
-	var conversaionId int
+	var conversationId int
+	var lastReadMessages []LastReadMessage
 
 	// Get conversation id by 2 usernames
 	if err := db.
@@ -218,12 +231,12 @@ func GetMessagesByUsernames(db *gorm.DB, user1 string, user2 string) ([]MessageD
 				conversation_id
 			HAVING
 				COUNT(conversation_id) = 2)`, []string{user1, user2}).
-		Find(&conversaionId).
+		Find(&conversationId).
 		Error; err != nil {
 		return nil, 0, err
 	}
 
-	if conversaionId == 0 {
+	if conversationId == 0 {
 		id, err := CreateConversation(db, &Create{
 			Sender:   user1,
 			Receiver: user2,
@@ -234,7 +247,7 @@ func GetMessagesByUsernames(db *gorm.DB, user1 string, user2 string) ([]MessageD
 
 	if err := db.
 		Table("messages").
-		Where("conversation_id = ?", conversaionId).
+		Where("conversation_id = ?", conversationId).
 		Order("id desc").
 		Limit(20).
 		Find(&messages).
@@ -243,21 +256,30 @@ func GetMessagesByUsernames(db *gorm.DB, user1 string, user2 string) ([]MessageD
 	}
 
 	if len(messages) == 0 {
-		return nil, uint(conversaionId), nil
+		return nil, uint(conversationId), nil
 	}
 
 	messagesIds := getMessagesIds(messages)
 
 	if err := db.
 		Table("messages_reactions").
-		Where("conversation_id = ? AND message_id IN ?", conversaionId, messagesIds).
+		Where("conversation_id = ? AND message_id IN ?", conversationId, messagesIds).
 		Find(&messagesReactions).
+		Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := db.
+		Table("last_read_messages").
+		Where("conversation_id = ?", conversationId).
+		Find(&lastReadMessages).
 		Error; err != nil {
 		return nil, 0, err
 	}
 
 	for _, message := range messages {
 		reactions := getReactions(message.Id, messagesReactions)
+		readBy := getReadBy(lastReadMessages, message.Id, message.Sender)
 
 		messagesData = append(messagesData, MessageData{
 			Id:        message.Id,
@@ -266,10 +288,11 @@ func GetMessagesByUsernames(db *gorm.DB, user1 string, user2 string) ([]MessageD
 			Time:      message.Time,
 			Url:       message.Url,
 			Reactions: reactions,
+			ReadBy:    readBy,
 		})
 	}
 
-	return messagesData, uint(conversaionId), nil
+	return messagesData, uint(conversationId), nil
 }
 
 func UplaodChatPhoto(db *gorm.DB, username string, buffer string, fileName string) (string, error) {
@@ -337,4 +360,14 @@ func getMessagesIds(messages []Message) []uint {
 		ids = append(ids, message.Id)
 	}
 	return ids
+}
+
+func getReadBy(lastReadMessages []LastReadMessage, messageId uint, sender string) []string {
+	var users []string
+	for _, lastReadMessage := range lastReadMessages {
+		if lastReadMessage.MessageId >= int(messageId) && lastReadMessage.Username != sender {
+			users = append(users, lastReadMessage.Username)
+		}
+	}
+	return users
 }

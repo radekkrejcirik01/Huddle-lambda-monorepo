@@ -190,3 +190,27 @@ func MessageReact(c *fiber.Ctx) error {
 		Message: "Successfully reacted to message",
 	})
 }
+
+// UpdateLastReadMessage POST /last-read-message
+func UpdateLastReadMessage(c *fiber.Ctx) error {
+	t := &messaging.LastReadMessage{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := messaging.UpdateLastReadMessage(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Last read message successfully updated",
+	})
+}

@@ -21,9 +21,11 @@ type Create struct {
 
 type Chat struct {
 	Id           int    `json:"id"`
+	Sender       string `json:"sender"`
 	Name         string `json:"name"`
 	ProfilePhoto string `json:"profilePhoto,omitempty"`
 	LastMessage  string `json:"lastMessage,omitempty"`
+	IsNewMessage int    `json:"isNewMessage,omitempty"`
 	IsRead       int    `json:"isRead,omitempty"`
 	IsLiked      int    `json:"isLiked,omitempty"`
 	Time         int64  `json:"time"`
@@ -39,21 +41,29 @@ type LastMessage struct {
 
 // Create conversation in conversations table
 func CreateConversation(db *gorm.DB, t *Create) (uint, error) {
-	conversaion := Conversation{}
+	conversation := Conversation{}
 
-	if err := db.Table("conversations").Create(&conversaion).Error; err != nil {
+	if err := db.Table("conversations").Create(&conversation).Error; err != nil {
 		return 0, err
 	}
 
 	create := []PersonInConversation{
-		{ConversationId: int(conversaion.Id), Username: t.Sender},
-		{ConversationId: int(conversaion.Id), Username: t.Receiver},
+		{ConversationId: int(conversation.Id), Username: t.Sender},
+		{ConversationId: int(conversation.Id), Username: t.Receiver},
 	}
 	if err := db.Table("people_in_conversations").Create(&create).Error; err != nil {
 		return 0, err
 	}
 
-	return conversaion.Id, nil
+	if err := db.Table("last_read_messages").Create(
+		[]LastReadMessage{
+			{Username: t.Sender, ConversationId: int(conversation.Id)},
+			{Username: t.Receiver, ConversationId: int(conversation.Id)},
+		}).Error; err != nil {
+		return 0, err
+	}
+
+	return conversation.Id, nil
 }
 
 // Get chats from conversations table
@@ -110,7 +120,7 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 
 	if err := db.
 		Table("last_read_messages").
-		Where("username = ? AND conversation_id IN ?", username, conversationsIds).
+		Where("conversation_id IN ?", conversationsIds).
 		Find(&lastReadMessages).
 		Error; err != nil {
 		return nil, err
@@ -141,14 +151,17 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 			peopleInConversations,
 			people,
 		)
+		isNewMessage := getIsNewMessage(lastReadMessages, lastMessage, username)
 		isRead := getIsRead(lastReadMessages, lastMessage, username)
 		isLiked := getIsLiked(lastMessage, likedConversations)
 
 		chats = append(chats, Chat{
 			Id:           lastMessage.ConversationId,
+			Sender:       lastMessage.Sender,
 			Name:         name,
 			ProfilePhoto: profilePhoto,
 			LastMessage:  lastMessage.Message,
+			IsNewMessage: isNewMessage,
 			IsRead:       isRead,
 			IsLiked:      isLiked,
 			Time:         lastMessage.Time,
@@ -224,13 +237,26 @@ func getPeopleInfo(
 	return name, profilePhoto
 }
 
-func getIsRead(lastReadMessages []LastReadMessage, lastMessage LastMessage, username string) int {
+func getIsNewMessage(lastReadMessages []LastReadMessage, lastMessage LastMessage, username string) int {
 	if lastMessage.Sender == username {
-		return 1
+		return 0
 	}
 
 	for _, lastReadMessage := range lastReadMessages {
-		if lastReadMessage.MessageId == lastMessage.Id {
+		if lastReadMessage.MessageId == int(lastMessage.Id) && lastReadMessage.Username == username {
+			return 0
+		}
+	}
+	return 1
+}
+
+func getIsRead(lastReadMessages []LastReadMessage, lastMessage LastMessage, username string) int {
+	if lastMessage.Sender != username {
+		return 0
+	}
+
+	for _, lastReadMessage := range lastReadMessages {
+		if lastReadMessage.MessageId == int(lastMessage.Id) && lastReadMessage.Username != username {
 			return 1
 		}
 	}
