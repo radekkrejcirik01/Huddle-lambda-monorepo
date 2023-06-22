@@ -34,6 +34,10 @@ type InviteResponseData struct {
 
 // Add invite to invites table
 func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
+	if t.Sender == t.Receiver {
+		return "Cannot invite yourself 😀", nil
+	}
+
 	if err := db.Table("users").Where("username = ?", t.Receiver).First(&Person{}).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "User doesn't exist yet", nil
