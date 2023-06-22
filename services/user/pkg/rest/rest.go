@@ -52,6 +52,7 @@ func Create() *fiber.App {
 
 	app.Delete("/person/:user1/:user2", controller.RemovePerson)
 	app.Delete("/huddle/:id", controller.DeleteHuddle)
+	app.Delete("/huddle-comment/:id", controller.DeleteHuddleComment)
 	app.Delete("/interaction/:id/:username", controller.RemoveHuddleInteraction)
 	app.Delete("/like/:id/:sender", controller.RemoveHuddleCommentLike)
 	app.Delete("/muted-huddles/:user1/:user2", controller.RemoveMutedHuddles)

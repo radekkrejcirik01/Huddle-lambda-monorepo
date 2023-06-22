@@ -336,6 +336,23 @@ func GetCommentLikes(c *fiber.Ctx) error {
 	})
 }
 
+// DeleteHuddleComment DELETE /comment/:id
+func DeleteHuddleComment(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	if err := huddles.DeleteHuddleComment(database.DB, id); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Huddle comment successfully deleted",
+	})
+}
+
 // RemoveHuddleCommentLike DELETE /like/:id/:sender
 func RemoveHuddleCommentLike(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))

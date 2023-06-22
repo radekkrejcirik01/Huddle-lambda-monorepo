@@ -2,14 +2,11 @@ package huddles
 
 import (
 	"fmt"
-	"time"
 
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
 )
-
-const timeFormat = "2006-01-02 15:04:05"
 
 type HuddleComment struct {
 	Id       uint `gorm:"primary_key;auto_increment;not_null"`
@@ -46,7 +43,7 @@ type HuddleCommentData struct {
 	Mention      *Mention `json:"mention,omitempty"`
 	LikesNumber  int      `json:"likesNumber,omitempty"`
 	Liked        int      `json:"liked,omitempty"`
-	Time         string   `json:"time"`
+	Time         int64    `json:"time"`
 }
 
 // Add Huddle comment to huddles_comments table
@@ -238,8 +235,6 @@ func GetHuddleComments(
 			mention = getMention(*comment.Mention, people)
 		}
 
-		time := time.Unix(comment.Created, 0).Format(timeFormat)
-
 		comments = append(comments, HuddleCommentData{
 			Id:           int(comment.Id),
 			Sender:       comment.Sender,
@@ -249,13 +244,18 @@ func GetHuddleComments(
 			LikesNumber:  len(usersLiked),
 			Liked:        liked,
 			Mention:      mention,
-			Time:         time,
+			Time:         comment.Created,
 		})
 	}
 
 	mentions = getMentions(mentionsUsernames, people)
 
 	return comments, mentions, nil
+}
+
+// DeleteHuddleComment from huddles comments table
+func DeleteHuddleComment(db *gorm.DB, id string) error {
+	return db.Table("huddles_comments").Where("id = ?", id).Delete(&HuddleComment{}).Error
 }
 
 func getCommentsUsernames(huddleComments []HuddleComment) []string {
