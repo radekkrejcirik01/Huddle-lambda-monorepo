@@ -104,7 +104,7 @@ func AddHuddleComment(db *gorm.DB, t *HuddleComment) error {
 			"type":     huddleType,
 			"huddleId": t.HuddleId,
 		},
-		Title:   name + " added a comment",
+		Title:   name + " commented",
 		Body:    t.Message,
 		Sound:   "default",
 		Devices: tokens,

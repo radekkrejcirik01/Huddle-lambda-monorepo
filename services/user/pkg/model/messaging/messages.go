@@ -127,7 +127,7 @@ func SendMessage(db *gorm.DB, t *Send) error {
 	body := t.Message
 
 	if len(t.Message) == 0 && t.Buffer != nil {
-		body = "Sends a photo"
+		body = "Sends photo"
 	}
 
 	senderInfo := getSenderInfo(info, t.Sender)

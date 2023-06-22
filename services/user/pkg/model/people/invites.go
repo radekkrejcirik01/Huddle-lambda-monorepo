@@ -84,7 +84,7 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 		Data: map[string]interface{}{
 			"type": "people",
 		},
-		Body:    t.Sender + " sends a friend invite",
+		Body:    t.Sender + " sends friend invite",
 		Sound:   "default",
 		Devices: *tokens,
 	}
