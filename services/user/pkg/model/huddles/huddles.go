@@ -17,7 +17,7 @@ const huddleType = "huddle"
 type Huddle struct {
 	Id        uint `gorm:"primary_key;auto_increment;not_null"`
 	CreatedBy string
-	What      string
+	Topic     string
 	Color     int
 	Created   int64 `gorm:"autoCreateTime"`
 }
@@ -29,7 +29,7 @@ func (Huddle) TableName() string {
 type NewHuddle struct {
 	Sender string
 	Name   string
-	What   string
+	Topic  string
 	Color  int
 }
 
@@ -38,7 +38,7 @@ type HuddleData struct {
 	CreatedBy      string `json:"createdBy"`
 	Name           string `json:"name"`
 	ProfilePhoto   string `json:"profilePhoto"`
-	What           string `json:"what"`
+	Topic          string `json:"topic"`
 	Color          int    `json:"color"`
 	Interacted     int    `json:"interacted,omitempty"`
 	CommentsNumber int    `json:"commentsNumber,omitempty"`
@@ -50,15 +50,15 @@ type Invite struct {
 }
 
 type Update struct {
-	Id   int
-	What string
+	Id    int
+	Topic string
 }
 
 // Add Huddle to huddles table
 func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 	huddle := Huddle{
 		CreatedBy: t.Sender,
-		What:      t.What,
+		Topic:     t.Topic,
 		Color:     t.Color,
 	}
 	if err := db.Table("huddles").Create(&huddle).Error; err != nil {
@@ -105,8 +105,7 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 			"type":     huddleType,
 			"huddleId": huddle.Id,
 		},
-		Title:   t.Name + " added new Huddle",
-		Body:    t.What,
+		Body:    t.Name + " created new Huddle with topic ✨" + t.Topic + "✨",
 		Devices: tokens,
 	}
 
@@ -152,7 +151,7 @@ func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, 
 			Name:         profileInfo.Firstname,
 			Color:        huddle.Color,
 			ProfilePhoto: profileInfo.ProfilePhoto,
-			What:         huddle.What,
+			Topic:        huddle.Topic,
 			Interacted:   interacted,
 		})
 
@@ -262,7 +261,7 @@ func GetHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, erro
 			CreatedBy:      huddle.CreatedBy,
 			Name:           profileInfo.Firstname,
 			ProfilePhoto:   profileInfo.ProfilePhoto,
-			What:           huddle.What,
+			Topic:          huddle.Topic,
 			Color:          huddle.Color,
 			Interacted:     interacted,
 			CommentsNumber: commentsNumber,
@@ -276,7 +275,7 @@ func GetHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, erro
 // Update Huddle in huddles table
 func UpdateHuddle(db *gorm.DB, t *Update) error {
 	update := map[string]interface{}{
-		"what": t.What,
+		"topic": t.Topic,
 	}
 
 	return db.Table("huddles").Where("id = ?", t.Id).Updates(update).Error
@@ -328,7 +327,7 @@ func GetHuddleById(db *gorm.DB, id uint, username string) (HuddleData, error) {
 		Name:         profile.Firstname,
 		Color:        huddle.Color,
 		ProfilePhoto: profile.ProfilePhoto,
-		What:         huddle.What,
+		Topic:        huddle.Topic,
 		Interacted:   interacted,
 	}
 
