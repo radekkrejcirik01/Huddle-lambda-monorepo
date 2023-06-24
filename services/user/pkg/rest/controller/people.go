@@ -113,11 +113,12 @@ func UpdateSeenInvites(c *fiber.Ctx) error {
 	})
 }
 
-// GetInvites GET /invites/:username
+// GetInvites GET /invites/:username/:lastId?
 func GetInvites(c *fiber.Ctx) error {
 	username := c.Params("username")
+	lastId := c.Params("lastId")
 
-	invites, err := people.GetInvites(database.DB, username)
+	invites, err := people.GetInvites(database.DB, username, lastId)
 
 	if err != nil {
 		return c.Status(fiber.StatusOK).JSON(Response{

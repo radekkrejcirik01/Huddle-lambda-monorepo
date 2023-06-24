@@ -13,7 +13,7 @@ func Create() *fiber.App {
 	app.Get("/user/:username", controller.GetUser)
 	app.Get("/people/:username/:lastId?", controller.GetPeople)
 	app.Get("/notifications/:username", controller.GetUserNotifications)
-	app.Get("/invites/:username", controller.GetInvites)
+	app.Get("/invites/:username/:lastId?", controller.GetInvites)
 	app.Get("/unseen-invites/:username", controller.GetUnseenInvites)
 	app.Get("/hides/:username/:lastId?", controller.GetHiddenPeople)
 	app.Get("/huddles/:username/:lastId?", controller.GetHuddles)

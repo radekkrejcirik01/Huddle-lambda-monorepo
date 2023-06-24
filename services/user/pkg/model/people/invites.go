@@ -156,14 +156,19 @@ func GetPeople(db *gorm.DB, username string, lastId string) ([]Person, int64, er
 }
 
 // Get invites from invites table
-func GetInvites(db *gorm.DB, username string) ([]InviteResponseData, error) {
+func GetInvites(db *gorm.DB, username string, lastId string) ([]InviteResponseData, error) {
 	var invites []Invite
 	var profiles []Person
 	var invitesResponse []InviteResponseData
 
+	var idCondition string
+	if lastId != "" {
+		idCondition = fmt.Sprintf("id < %s AND ", lastId)
+	}
+
 	if err := db.
 		Table("invites").
-		Where("receiver = ? AND accepted = 0", username).
+		Where(idCondition+"receiver = ? AND accepted = 0", username).
 		Order("id DESC").
 		Limit(20).
 		Find(&invites).
