@@ -13,7 +13,7 @@ type Invite struct {
 	Sender   string
 	Receiver string
 	Accepted int
-	Created  int64 `gorm:"autoCreateTime"`
+	Seen     int
 }
 
 func (Invite) TableName() string {
@@ -217,6 +217,28 @@ func AcceptPersonInvite(db *gorm.DB, t *Invite) error {
 	}
 
 	return service.SendNotification(&fcmNotification)
+}
+
+// GetUnseenInvites from invites table
+func GetUnseenInvites(db *gorm.DB, username string) (int64, error) {
+	var number int64
+	if err := db.
+		Table("invites").
+		Where("receiver = ? AND seen IS NULL", username).
+		Count(&number).
+		Error; err != nil {
+		return 0, err
+	}
+	return number, nil
+}
+
+// UpdateSeenInvites in invites table
+func UpdateSeenInvites(db *gorm.DB, username string) error {
+	return db.
+		Table("invites").
+		Where("receiver = ? AND seen IS NULL", username).
+		Update("seen", 1).
+		Error
 }
 
 // Update accepted column in invites table to 0

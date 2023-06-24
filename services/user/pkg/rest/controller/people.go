@@ -76,6 +76,43 @@ func AcceptPersonInvite(c *fiber.Ctx) error {
 	})
 }
 
+// GetUnseenInvites GET /unseen-invites/:username
+func GetUnseenInvites(c *fiber.Ctx) error {
+	username := c.Params("username")
+
+	number, err := people.GetUnseenInvites(database.DB, username)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(GetUnseenInvitesResponse{
+		Status:  "success",
+		Message: "Unseen invites number successfully got",
+		Number:  number,
+	})
+}
+
+// UpdateSeenInvites PUT /seen-invites/:username
+func UpdateSeenInvites(c *fiber.Ctx) error {
+	username := c.Params("username")
+
+	if err := people.UpdateSeenInvites(database.DB, username); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Seen invites successfully updated",
+	})
+}
+
 // GetInvites GET /invites/:username
 func GetInvites(c *fiber.Ctx) error {
 	username := c.Params("username")
@@ -89,7 +126,7 @@ func GetInvites(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(GetInviteResponse{
+	return c.Status(fiber.StatusOK).JSON(GetInvitesResponse{
 		Status:  "success",
 		Message: "Invites successfully got",
 		Data:    invites,

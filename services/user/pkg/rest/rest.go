@@ -14,6 +14,7 @@ func Create() *fiber.App {
 	app.Get("/people/:username/:lastId?", controller.GetPeople)
 	app.Get("/notifications/:username", controller.GetUserNotifications)
 	app.Get("/invites/:username", controller.GetInvites)
+	app.Get("/unseen-invites/:username", controller.GetUnseenInvites)
 	app.Get("/hides/:username/:lastId?", controller.GetHiddenPeople)
 	app.Get("/huddles/:username/:lastId?", controller.GetHuddles)
 	app.Get("/user-huddles/:username/:lastId?", controller.GetUserHuddles)
@@ -49,6 +50,7 @@ func Create() *fiber.App {
 	app.Put("/huddle", controller.UpdateHuddle)
 	app.Put("/hide", controller.UpdateHiddenPeople)
 	app.Put("/notification", controller.UpdateUserNotification)
+	app.Put("/seen-invites/:username", controller.UpdateSeenInvites)
 
 	app.Delete("/person/:user1/:user2", controller.RemovePerson)
 	app.Delete("/huddle/:id", controller.DeleteHuddle)

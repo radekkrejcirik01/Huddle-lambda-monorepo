@@ -37,10 +37,16 @@ type PeopleResponse struct {
 	InvitesNumber int64           `json:"invitesNumber,omitempty"`
 }
 
-type GetInviteResponse struct {
+type GetInvitesResponse struct {
 	Status  string                      `json:"status"`
 	Message string                      `json:"message,omitempty"`
 	Data    []people.InviteResponseData `json:"data,omitempty"`
+}
+
+type GetUnseenInvitesResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+	Number  int64  `json:"number,omitempty"`
 }
 
 type GetHiddenPeopleResponse struct {
