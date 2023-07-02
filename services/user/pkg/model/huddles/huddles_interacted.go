@@ -18,7 +18,6 @@ func (HuddleInteracted) TableName() string {
 
 type Interact struct {
 	HuddleId int
-	Sender   string
 	Receiver string
 }
 
@@ -43,9 +42,9 @@ type RemoveConfirm struct {
 }
 
 // Add Huddle interaction to huddles_interacted table
-func HuddleInteract(db *gorm.DB, t *Interact) error {
+func HuddleInteract(db *gorm.DB, username string, t *Interact) error {
 	interaction := HuddleInteracted{
-		Sender:   t.Sender,
+		Sender:   username,
 		HuddleId: t.HuddleId,
 	}
 	if err := db.Table("huddles_interacted").Create(&interaction).Error; err != nil {
@@ -84,8 +83,8 @@ func HuddleInteract(db *gorm.DB, t *Interact) error {
 	return service.SendNotification(&fcmNotification)
 }
 
-// Get Huddle interactions from huddles_interacted table
-func GetHuddleInteractions(db *gorm.DB, huddleId int) ([]UserInteracted, error) {
+// GetHuddleInteractions from huddles_interacted table
+func GetHuddleInteractions(db *gorm.DB, huddleId string) ([]UserInteracted, error) {
 	var usersInteracted []UserInteracted
 
 	var interactions []string
@@ -109,8 +108,8 @@ func GetHuddleInteractions(db *gorm.DB, huddleId int) ([]UserInteracted, error) 
 	return usersInteracted, nil
 }
 
-// Remove Huddle interaction from huddles_interacted table
-func RemoveHuddleInteraction(db *gorm.DB, username string, huddleId uint) error {
+// RemoveHuddleInteraction from huddles_interacted table
+func RemoveHuddleInteraction(db *gorm.DB, username string, huddleId string) error {
 	return db.
 		Table("huddles_interacted").
 		Where("sender = ? AND huddle_id = ?", username, huddleId).

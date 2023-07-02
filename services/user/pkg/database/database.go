@@ -18,6 +18,7 @@ var (
 	accessKey       = ""
 	secretAccessKey = ""
 	fcmclient       = ""
+	jwtsecret       = ""
 )
 
 // DB is connected MySQL DB
@@ -34,6 +35,8 @@ func init() {
 	secretAccessKey = os.Getenv("SECRETACCESSKEY")
 
 	fcmclient = os.Getenv("FCMCLIENT")
+
+	jwtsecret = os.Getenv("JWTSECRET")
 }
 
 // Connect to MySQL server
@@ -54,15 +57,14 @@ func Connect() {
 	DB = db
 }
 
-// GetConfig for debuging
-func GetConfig() (string, string, string, string, string) {
-	return dbhost, dbport, dbuser, dbpassword, dbname
-}
-
 func GetCredentials() (string, string) {
 	return accessKey, secretAccessKey
 }
 
 func GetFcmClient() string {
 	return fcmclient
+}
+
+func GetJWTSecret() string {
+	return jwtsecret
 }

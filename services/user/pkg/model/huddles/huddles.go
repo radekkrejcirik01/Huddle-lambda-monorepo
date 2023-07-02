@@ -27,10 +27,9 @@ func (Huddle) TableName() string {
 }
 
 type NewHuddle struct {
-	Sender string
-	Name   string
-	Topic  string
-	Color  int
+	Name  string
+	Topic string
+	Color int
 }
 
 type HuddleData struct {
@@ -54,10 +53,10 @@ type Update struct {
 	Topic string
 }
 
-// Add Huddle to huddles table
-func AddHuddle(db *gorm.DB, t *NewHuddle) error {
+// CreateHuddle in huddles table
+func CreateHuddle(db *gorm.DB, username string, t *NewHuddle) error {
 	huddle := Huddle{
-		CreatedBy: t.Sender,
+		CreatedBy: username,
 		Topic:     t.Topic,
 		Color:     t.Color,
 	}
@@ -68,7 +67,7 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 	var acceptedInvites []Invite
 	if err := db.
 		Table("invites").
-		Where("(sender = ? OR receiver = ?) AND accepted = 1", t.Sender, t.Sender).
+		Where("(sender = ? OR receiver = ?) AND accepted = 1", username, username).
 		Find(&acceptedInvites).Error; err != nil {
 		return err
 	}
@@ -77,13 +76,13 @@ func AddHuddle(db *gorm.DB, t *NewHuddle) error {
 	if err := db.
 		Table("hides").
 		Select("hidden").
-		Where("user = ?", t.Sender).
+		Where("user = ?", username).
 		Find(&hiddenUsernames).
 		Error; err != nil {
 		return err
 	}
 
-	usernames := GetNewHuddleUsernamesFromInvites(acceptedInvites, hiddenUsernames, t.Sender)
+	usernames := GetNewHuddleUsernamesFromInvites(acceptedInvites, hiddenUsernames, username)
 
 	var notifyUsernames []string
 	if err := db.
@@ -282,7 +281,7 @@ func UpdateHuddle(db *gorm.DB, t *Update) error {
 }
 
 // Get Huddle from huddles table by id
-func GetHuddleById(db *gorm.DB, id uint, username string) (HuddleData, error) {
+func GetHuddleById(db *gorm.DB, id string, username string) (HuddleData, error) {
 	var huddleData HuddleData
 	var interacted int
 
@@ -335,7 +334,7 @@ func GetHuddleById(db *gorm.DB, id uint, username string) (HuddleData, error) {
 }
 
 // Delete huddle from huddles table
-func DeleteHuddle(db *gorm.DB, id uint) error {
+func DeleteHuddle(db *gorm.DB, id string) error {
 	if err := db.Table("huddles").Where("id = ?", id).Delete(&Huddle{}).Error; err != nil {
 		return err
 	}

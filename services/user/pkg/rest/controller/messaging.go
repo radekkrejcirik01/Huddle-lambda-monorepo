@@ -1,17 +1,18 @@
 package controller
 
 import (
-	"fmt"
-	"strconv"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/database"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/middleware"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/messaging"
 )
 
-// GetChats GET /chats/:username/:lastId?
+// GetChats GET /chats/:lastId?
 func GetChats(c *fiber.Ctx) error {
-	username := c.Params("username")
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
 	lastId := c.Params("lastId")
 
 	chats, err := messaging.GetChats(database.DB, username, lastId)
@@ -32,6 +33,11 @@ func GetChats(c *fiber.Ctx) error {
 
 // SendMessage POST /message
 func SendMessage(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
 	t := &messaging.Send{}
 
 	if err := c.BodyParser(t); err != nil {
@@ -41,7 +47,7 @@ func SendMessage(c *fiber.Ctx) error {
 		})
 	}
 
-	if err := messaging.SendMessage(database.DB, t); err != nil {
+	if err := messaging.SendMessage(database.DB, username, t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
 			Message: err.Error(),
@@ -54,20 +60,21 @@ func SendMessage(c *fiber.Ctx) error {
 	})
 }
 
-// GetMessages GET /conversation/:conversationId/:lastId?
+// GetConversation GET /conversation/:conversationId/:lastId?
 func GetConversation(c *fiber.Ctx) error {
-	id, parseErr := strconv.Atoi(c.Params("conversationId"))
-	if parseErr != nil {
-		fmt.Println(parseErr)
+	_, err := middleware.Authorize(c)
+	if err != nil {
+		return err
 	}
+	conversationId := c.Params("conversationId")
 	lastId := c.Params("lastId")
 
-	messages, err := messaging.GetConversation(database.DB, id, lastId)
+	messages, getErr := messaging.GetConversation(database.DB, conversationId, lastId)
 
-	if err != nil {
+	if getErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
-			Message: err.Error(),
+			Message: getErr.Error(),
 		})
 	}
 
@@ -78,21 +85,24 @@ func GetConversation(c *fiber.Ctx) error {
 	})
 }
 
-// GetMessagesByUsernames GET /messages/:user1/:user2
+// GetMessagesByUsernames GET /messages/:user
 func GetMessagesByUsernames(c *fiber.Ctx) error {
-	user1 := c.Params("user1")
-	user2 := c.Params("user2")
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+	user := c.Params("user")
 
-	messages, conversationId, err := messaging.GetMessagesByUsernames(
+	messages, conversationId, getErr := messaging.GetMessagesByUsernames(
 		database.DB,
-		user1,
-		user2,
+		username,
+		user,
 	)
 
-	if err != nil {
+	if getErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
-			Message: err.Error(),
+			Message: getErr.Error(),
 		})
 	}
 
@@ -106,6 +116,11 @@ func GetMessagesByUsernames(c *fiber.Ctx) error {
 
 // LikeConversation POST /conversation-like
 func LikeConversation(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
 	t := &messaging.ConversationLike{}
 
 	if err := c.BodyParser(t); err != nil {
@@ -114,6 +129,8 @@ func LikeConversation(c *fiber.Ctx) error {
 			Message: err.Error(),
 		})
 	}
+
+	t.Sender = username
 
 	if err := messaging.LikeConversation(database.DB, t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -128,17 +145,20 @@ func LikeConversation(c *fiber.Ctx) error {
 	})
 }
 
-// GetConversationLike GET /conversation-like/:user/:conversationId
+// GetConversationLike GET /conversation-like/:conversationId
 func GetConversationLike(c *fiber.Ctx) error {
-	sender := c.Params("user")
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
 	conversationId := c.Params("conversationId")
 
-	isLiked, err := messaging.GetConversationLike(database.DB, sender, conversationId)
+	isLiked, getErr := messaging.GetConversationLike(database.DB, username, conversationId)
 
-	if err != nil {
+	if getErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
-			Message: err.Error(),
+			Message: getErr.Error(),
 		})
 	}
 
@@ -149,12 +169,15 @@ func GetConversationLike(c *fiber.Ctx) error {
 	})
 }
 
-// RemoveConversationLike DELETE /conversation-like/:user/:conversationId
+// RemoveConversationLike DELETE /conversation-like/:conversationId
 func RemoveConversationLike(c *fiber.Ctx) error {
-	sender := c.Params("user")
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
 	conversationId := c.Params("conversationId")
 
-	if err := messaging.RemoveConversationLike(database.DB, sender, conversationId); err != nil {
+	if err := messaging.RemoveConversationLike(database.DB, username, conversationId); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
 			Message: err.Error(),
@@ -169,6 +192,11 @@ func RemoveConversationLike(c *fiber.Ctx) error {
 
 // MessageReact POST /message-react
 func MessageReact(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
 	t := &messaging.SendReaction{}
 
 	if err := c.BodyParser(t); err != nil {
@@ -178,7 +206,7 @@ func MessageReact(c *fiber.Ctx) error {
 		})
 	}
 
-	if err := messaging.MessageReact(database.DB, t); err != nil {
+	if err := messaging.MessageReact(database.DB, username, t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
 			Message: err.Error(),
@@ -193,6 +221,11 @@ func MessageReact(c *fiber.Ctx) error {
 
 // UpdateLastReadMessage POST /last-read-message
 func UpdateLastReadMessage(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
 	t := &messaging.LastReadMessage{}
 
 	if err := c.BodyParser(t); err != nil {
@@ -201,6 +234,8 @@ func UpdateLastReadMessage(c *fiber.Ctx) error {
 			Message: err.Error(),
 		})
 	}
+
+	t.Username = username
 
 	if err := messaging.UpdateLastReadMessage(database.DB, t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{

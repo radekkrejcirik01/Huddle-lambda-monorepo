@@ -22,7 +22,6 @@ type HiddenPeopleData struct {
 }
 
 type HidePeople struct {
-	User      string
 	Usernames []string
 }
 
@@ -100,13 +99,13 @@ func GetHiddenPeople(db *gorm.DB, username string, lastId string) ([]HiddenPeopl
 }
 
 // UpdateHiddenPeople in hide table
-func UpdateHiddenPeople(db *gorm.DB, t *HidePeople) error {
+func UpdateHiddenPeople(db *gorm.DB, username string, t *HidePeople) error {
 	var hidden []string
 
 	if err := db.
 		Table("hides").
 		Select("hidden").
-		Where("user = ?", t.User).
+		Where("user = ?", username).
 		Find(&hidden).
 		Error; err != nil {
 		return err
@@ -117,7 +116,7 @@ func UpdateHiddenPeople(db *gorm.DB, t *HidePeople) error {
 
 	if err := db.
 		Table("hides").
-		Where("user = ? AND hidden IN ?", t.User, hiddenUsernames).
+		Where("user = ? AND hidden IN ?", username, hiddenUsernames).
 		Delete(&Hide{}).
 		Error; err != nil {
 		return err
@@ -126,7 +125,7 @@ func UpdateHiddenPeople(db *gorm.DB, t *HidePeople) error {
 	var hides []Hide
 	for _, hide := range hideUsernames {
 		hides = append(hides, Hide{
-			User:   t.User,
+			User:   username,
 			Hidden: hide,
 		})
 	}

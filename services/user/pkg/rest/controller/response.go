@@ -12,10 +12,16 @@ type Response struct {
 	Message string `json:"message"`
 }
 
+type AuthResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+	Token   string `json:"token,omitempty"`
+}
+
 type UserResponse struct {
-	Status  string     `json:"status"`
-	Message string     `json:"message,omitempty"`
-	Data    users.User `json:"data,omitempty"`
+	Status  string         `json:"status"`
+	Message string         `json:"message,omitempty"`
+	Data    users.UserData `json:"data,omitempty"`
 }
 
 type UserNotificationsResponse struct {

@@ -3,11 +3,17 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/database"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/middleware"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 )
 
 // AddPersonInvite POST /person
 func AddPersonInvite(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
 	t := &people.Invite{}
 
 	if err := c.BodyParser(t); err != nil {
@@ -16,6 +22,8 @@ func AddPersonInvite(c *fiber.Ctx) error {
 			Message: err.Error(),
 		})
 	}
+
+	t.Sender = username
 
 	message, err := people.AddPersonInvite(database.DB, t)
 	if err != nil {
@@ -26,17 +34,20 @@ func AddPersonInvite(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(PeopleResponse{
-		Status:  "succes",
+		Status:  "success",
 		Message: message,
 	})
 }
 
-// GetPeople GET /people/:username/:lastId?
+// GetPeople GET /people/:lastId?
 func GetPeople(c *fiber.Ctx) error {
-	username := c.Params("username")
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
 	lastId := c.Params("lastId")
 
-	people, invitesNumber, err := people.GetPeople(database.DB, username, lastId)
+	peopleData, invitesNumber, err := people.GetPeople(database.DB, username, lastId)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
@@ -45,15 +56,20 @@ func GetPeople(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(PeopleResponse{
-		Status:        "succes",
-		Message:       "People succesfully got",
-		Data:          people,
+		Status:        "success",
+		Message:       "People successfully got",
+		Data:          peopleData,
 		InvitesNumber: invitesNumber,
 	})
 }
 
-// AcceptPersonInvite PUT /people/invite
+// AcceptPersonInvite PUT /person
 func AcceptPersonInvite(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
 	t := &people.Invite{}
 
 	if err := c.BodyParser(t); err != nil {
@@ -63,6 +79,8 @@ func AcceptPersonInvite(c *fiber.Ctx) error {
 		})
 	}
 
+	t.Sender = username
+
 	if err := people.AcceptPersonInvite(database.DB, t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
@@ -71,21 +89,24 @@ func AcceptPersonInvite(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(Response{
-		Status:  "succes",
-		Message: "Invite succesfully accepted",
+		Status:  "success",
+		Message: "Invite successfully accepted",
 	})
 }
 
-// GetUnseenInvites GET /unseen-invites/:username
+// GetUnseenInvites GET /unseen-invites
 func GetUnseenInvites(c *fiber.Ctx) error {
-	username := c.Params("username")
-
-	number, err := people.GetUnseenInvites(database.DB, username)
-
+	username, err := middleware.Authorize(c)
 	if err != nil {
+		return err
+	}
+
+	number, getErr := people.GetUnseenInvites(database.DB, username)
+
+	if getErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
-			Message: err.Error(),
+			Message: getErr.Error(),
 		})
 	}
 
@@ -96,9 +117,12 @@ func GetUnseenInvites(c *fiber.Ctx) error {
 	})
 }
 
-// UpdateSeenInvites PUT /seen-invites/:username
+// UpdateSeenInvites PUT /seen-invites
 func UpdateSeenInvites(c *fiber.Ctx) error {
-	username := c.Params("username")
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
 
 	if err := people.UpdateSeenInvites(database.DB, username); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -113,14 +137,17 @@ func UpdateSeenInvites(c *fiber.Ctx) error {
 	})
 }
 
-// GetInvites GET /invites/:username/:lastId?
+// GetInvites GET /invites/:lastId?
 func GetInvites(c *fiber.Ctx) error {
-	username := c.Params("username")
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
 	lastId := c.Params("lastId")
 
-	invites, err := people.GetInvites(database.DB, username, lastId)
+	invites, getErr := people.GetInvites(database.DB, username, lastId)
 
-	if err != nil {
+	if getErr != nil {
 		return c.Status(fiber.StatusOK).JSON(Response{
 			Status:  "error",
 			Message: "No record found",
@@ -134,14 +161,17 @@ func GetInvites(c *fiber.Ctx) error {
 	})
 }
 
-// GetHiddenPeople GET /hides/:username/:lastId?
+// GetHiddenPeople GET /hidden-people/:lastId?
 func GetHiddenPeople(c *fiber.Ctx) error {
-	username := c.Params("username")
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
 	lastId := c.Params("lastId")
 
-	hiddenPeople, err := people.GetHiddenPeople(database.DB, username, lastId)
+	hiddenPeople, getErr := people.GetHiddenPeople(database.DB, username, lastId)
 
-	if err != nil {
+	if getErr != nil {
 		return c.Status(fiber.StatusOK).JSON(Response{
 			Status:  "error",
 			Message: "No record found",
@@ -149,7 +179,7 @@ func GetHiddenPeople(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(GetHiddenPeopleResponse{
-		Status:  "succes",
+		Status:  "success",
 		Message: "Hidden people successfully got",
 		Data:    hiddenPeople,
 	})
@@ -157,6 +187,11 @@ func GetHiddenPeople(c *fiber.Ctx) error {
 
 // UpdateHiddenPeople PUT /hide
 func UpdateHiddenPeople(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
 	t := &people.HidePeople{}
 
 	if err := c.BodyParser(t); err != nil {
@@ -166,7 +201,7 @@ func UpdateHiddenPeople(c *fiber.Ctx) error {
 		})
 	}
 
-	if err := people.UpdateHiddenPeople(database.DB, t); err != nil {
+	if err := people.UpdateHiddenPeople(database.DB, username, t); err != nil {
 		return c.Status(fiber.StatusOK).JSON(Response{
 			Status:  "error",
 			Message: "No record found",
@@ -181,6 +216,11 @@ func UpdateHiddenPeople(c *fiber.Ctx) error {
 
 // MuteHuddles POST /mute-huddles
 func MuteHuddles(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
 	t := &people.MutedHuddle{}
 
 	if err := c.BodyParser(t); err != nil {
@@ -189,6 +229,8 @@ func MuteHuddles(c *fiber.Ctx) error {
 			Message: err.Error(),
 		})
 	}
+
+	t.User = username
 
 	if err := people.MuteHuddles(database.DB, t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -203,13 +245,16 @@ func MuteHuddles(c *fiber.Ctx) error {
 	})
 }
 
-// GetMutedHuddles GET /muted-huddles/:username
+// GetMutedHuddles GET /muted-huddles
 func GetMutedHuddles(c *fiber.Ctx) error {
-	username := c.Params("username")
-
-	people, err := people.GetMutedHuddles(database.DB, username)
-
+	username, err := middleware.Authorize(c)
 	if err != nil {
+		return err
+	}
+
+	peopleData, getErr := people.GetMutedHuddles(database.DB, username)
+
+	if getErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
 			Message: "Could not get muted huddles",
@@ -219,16 +264,19 @@ func GetMutedHuddles(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(GetMutedHuddlesResponse{
 		Status:  "success",
 		Message: "Muted Huddles successfully got",
-		Data:    people,
+		Data:    peopleData,
 	})
 }
 
-// RemoveMutedHuddles DELETE /muted-huddles/:user1/:user2
+// RemoveMutedHuddles DELETE /muted-huddles/:user
 func RemoveMutedHuddles(c *fiber.Ctx) error {
-	user1 := c.Params("user1")
-	user2 := c.Params("user2")
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+	user := c.Params("user")
 
-	if err := people.RemoveMutedHuddles(database.DB, user1, user2); err != nil {
+	if err := people.RemoveMutedHuddles(database.DB, username, user); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
 			Message: "Could not unmute huddles",
@@ -243,6 +291,11 @@ func RemoveMutedHuddles(c *fiber.Ctx) error {
 
 // MuteConversation POST /mute-conversation
 func MuteConversation(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
 	t := &people.MutedConversation{}
 
 	if err := c.BodyParser(t); err != nil {
@@ -251,6 +304,8 @@ func MuteConversation(c *fiber.Ctx) error {
 			Message: err.Error(),
 		})
 	}
+
+	t.User = username
 
 	if err := people.MuteConversation(database.DB, t); err != nil {
 		return c.Status(fiber.StatusOK).JSON(Response{
@@ -265,14 +320,17 @@ func MuteConversation(c *fiber.Ctx) error {
 	})
 }
 
-// IsConversationMuted GET /muted/:username/:conversationId
+// IsConversationMuted GET /muted-conversation/:conversationId
 func IsConversationMuted(c *fiber.Ctx) error {
-	username := c.Params("username")
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
 	conversationId := c.Params("conversationId")
 
-	isMuted, err := people.IsConversationMuted(database.DB, username, conversationId)
+	isMuted, getErr := people.IsConversationMuted(database.DB, username, conversationId)
 
-	if err != nil {
+	if getErr != nil {
 		return c.Status(fiber.StatusOK).JSON(Response{
 			Status:  "error",
 			Message: "No record found",
@@ -283,23 +341,5 @@ func IsConversationMuted(c *fiber.Ctx) error {
 		Status:  "success",
 		Message: "Conversation mute successfully updated",
 		Muted:   isMuted,
-	})
-}
-
-// RemovePerson DELETE /person
-func RemovePerson(c *fiber.Ctx) error {
-	user1 := c.Params("user1")
-	user2 := c.Params("user2")
-
-	if err := people.RemovePerson(database.DB, user1, user2); err != nil {
-		return c.Status(fiber.StatusOK).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(Response{
-		Status:  "succes",
-		Message: "Connection removed",
 	})
 }

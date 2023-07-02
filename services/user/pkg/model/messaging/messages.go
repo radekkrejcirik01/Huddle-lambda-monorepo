@@ -28,7 +28,6 @@ func (Message) TableName() string {
 }
 
 type Send struct {
-	Sender         string
 	ConversationId uint
 	Message        string
 	Time           string
@@ -59,12 +58,12 @@ type MessageData struct {
 }
 
 // Add message to messages table
-func SendMessage(db *gorm.DB, t *Send) error {
+func SendMessage(db *gorm.DB, username string, t *Send) error {
 	var receiver string
 	var photoUrl string
 
 	if t.Buffer != nil {
-		url, err := UplaodChatPhoto(db, t.Sender, *t.Buffer, *t.FileName)
+		url, err := UplaodChatPhoto(db, username, *t.Buffer, *t.FileName)
 		if err != nil {
 			return err
 		}
@@ -72,7 +71,7 @@ func SendMessage(db *gorm.DB, t *Send) error {
 	}
 
 	message := Message{
-		Sender:         t.Sender,
+		Sender:         username,
 		ConversationId: t.ConversationId,
 		Message:        t.Message,
 		Url:            photoUrl,
@@ -85,7 +84,7 @@ func SendMessage(db *gorm.DB, t *Send) error {
 	if err := db.
 		Table("people_in_conversations").
 		Select("username").
-		Where("conversation_id = ? AND username != ?", t.ConversationId, t.Sender).
+		Where("conversation_id = ? AND username != ?", t.ConversationId, username).
 		Find(&receiver).
 		Error; err != nil {
 		return err
@@ -109,7 +108,7 @@ func SendMessage(db *gorm.DB, t *Send) error {
 	if err := db.
 		Table("users").
 		Select("username, firstname, profile_photo, messages_notifications").
-		Where("username IN ?", []string{receiver, t.Sender}).
+		Where("username IN ?", []string{receiver, username}).
 		Find(&info).
 		Error; err != nil {
 		return err
@@ -130,7 +129,7 @@ func SendMessage(db *gorm.DB, t *Send) error {
 		body = "Sends photo"
 	}
 
-	senderInfo := getSenderInfo(info, t.Sender)
+	senderInfo := getSenderInfo(info, username)
 
 	fcmNotification := service.FcmNotification{
 		Data: map[string]interface{}{
@@ -149,7 +148,7 @@ func SendMessage(db *gorm.DB, t *Send) error {
 }
 
 // GetConversation messages and reactions from messages table
-func GetConversation(db *gorm.DB, conversationId int, lastId string) ([]MessageData, error) {
+func GetConversation(db *gorm.DB, conversationId string, lastId string) ([]MessageData, error) {
 	var messages []Message
 	var messagesReactions []Reaction
 	var messagesData []MessageData
@@ -211,7 +210,7 @@ func GetConversation(db *gorm.DB, conversationId int, lastId string) ([]MessageD
 }
 
 // GetMessagesByUsernames and reactions from messages table
-func GetMessagesByUsernames(db *gorm.DB, user1 string, user2 string) ([]MessageData, uint, error) {
+func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]MessageData, uint, error) {
 	var messages []Message
 	var messagesReactions []Reaction
 	var messagesData []MessageData
@@ -230,7 +229,7 @@ func GetMessagesByUsernames(db *gorm.DB, user1 string, user2 string) ([]MessageD
 			GROUP BY
 				conversation_id
 			HAVING
-				COUNT(conversation_id) = 2)`, []string{user1, user2}).
+				COUNT(conversation_id) = 2)`, []string{username, user}).
 		Find(&conversationId).
 		Error; err != nil {
 		return nil, 0, err
@@ -238,8 +237,8 @@ func GetMessagesByUsernames(db *gorm.DB, user1 string, user2 string) ([]MessageD
 
 	if conversationId == 0 {
 		id, err := CreateConversation(db, &Create{
-			Sender:   user1,
-			Receiver: user2,
+			Sender:   username,
+			Receiver: user,
 		})
 
 		return nil, id, err

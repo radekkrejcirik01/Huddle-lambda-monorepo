@@ -22,7 +22,6 @@ func (HuddleComment) TableName() string {
 }
 
 type MentionComment struct {
-	Sender   string
 	Receiver string
 	HuddleId int
 	Message  string
@@ -110,12 +109,12 @@ func AddHuddleComment(db *gorm.DB, t *HuddleComment) error {
 	return service.SendNotification(&fcmNotification)
 }
 
-// Add Huddle mention comment to huddles_comments table
-func AddHuddleMentionComment(db *gorm.DB, t *MentionComment) error {
+// AddHuddleMentionComment to huddles_comments table
+func AddHuddleMentionComment(db *gorm.DB, username string, t *MentionComment) error {
 	var name string
 
 	comment := HuddleComment{
-		Sender:   t.Sender,
+		Sender:   username,
 		HuddleId: t.HuddleId,
 		Message:  t.Message,
 		Mention:  &t.Receiver,
@@ -125,7 +124,7 @@ func AddHuddleMentionComment(db *gorm.DB, t *MentionComment) error {
 		return err
 	}
 
-	if t.Sender == t.Receiver {
+	if username == t.Receiver {
 		return nil
 	}
 
@@ -146,7 +145,7 @@ func AddHuddleMentionComment(db *gorm.DB, t *MentionComment) error {
 	if err := db.
 		Table("users").
 		Select("firstname").
-		Where("username = ?", t.Sender).
+		Where("username = ?", username).
 		Find(&name).
 		Error; err != nil {
 		return err
@@ -173,7 +172,7 @@ func AddHuddleMentionComment(db *gorm.DB, t *MentionComment) error {
 // Get Huddle comments from huddles_comments table
 func GetHuddleComments(
 	db *gorm.DB,
-	huddleId uint,
+	huddleId string,
 	username string,
 	lastId string) ([]HuddleCommentData, []Mention, error) {
 	var comments []HuddleCommentData

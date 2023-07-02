@@ -20,12 +20,12 @@ func LikeConversation(db *gorm.DB, t *ConversationLike) error {
 }
 
 // GetConversationLike // get if conversation is liked
-func GetConversationLike(db *gorm.DB, sender string, conversationId string) (int, error) {
+func GetConversationLike(db *gorm.DB, username string, conversationId string) (int, error) {
 	var like ConversationLike
 
 	err := db.
 		Table("conversations_likes").
-		Where("sender = ? AND conversation_id = ?", sender, conversationId).
+		Where("sender = ? AND conversation_id = ?", username, conversationId).
 		Find(&like).
 		Error
 
@@ -41,10 +41,10 @@ func GetConversationLike(db *gorm.DB, sender string, conversationId string) (int
 }
 
 // LikeConversation like conversation
-func RemoveConversationLike(db *gorm.DB, sender string, conversationId string) error {
+func RemoveConversationLike(db *gorm.DB, username string, conversationId string) error {
 	return db.
 		Table("conversations_likes").
-		Where("sender = ? AND conversation_id = ?", sender, conversationId).
+		Where("sender = ? AND conversation_id = ?", username, conversationId).
 		Delete(&ConversationLike{}).
 		Error
 }

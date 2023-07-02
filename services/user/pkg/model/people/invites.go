@@ -246,16 +246,6 @@ func UpdateSeenInvites(db *gorm.DB, username string) error {
 		Error
 }
 
-// Update accepted column in invites table to 0
-func RemovePerson(db *gorm.DB, user1 string, user2 string) error {
-	return db.
-		Table("invites").
-		Where("(sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)",
-			user1, user2, user2, user1).
-		Update("accepted", 0).
-		Error
-}
-
 // Get usernames from accepted invites
 func GetUsernamesFromInvites(acceptedInvites []Invite, username string) []string {
 	usernames := make([]string, 0)

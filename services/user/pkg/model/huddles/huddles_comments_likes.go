@@ -20,7 +20,6 @@ func (HuddleCommentLike) TableName() string {
 }
 
 type Like struct {
-	Sender    string
 	Receiver  string
 	CommentId int
 	HuddleId  int
@@ -32,12 +31,12 @@ type Liker struct {
 	ProfilePhoto string `json:"profilePhoto,omitempty"`
 }
 
-// Add Huddle comment like to huddles_comments_likes table
-func LikeHuddleComment(db *gorm.DB, t *Like) error {
+// LikeHuddleComment in huddles_comments_likes table
+func LikeHuddleComment(db *gorm.DB, username string, t *Like) error {
 	var name string
 
 	like := HuddleCommentLike{
-		Sender:    t.Sender,
+		Sender:    username,
 		CommentId: t.CommentId,
 		HuddleId:  t.HuddleId,
 	}
@@ -46,14 +45,14 @@ func LikeHuddleComment(db *gorm.DB, t *Like) error {
 		return err
 	}
 
-	if t.Sender == t.Receiver {
+	if username == t.Receiver {
 		return nil
 	}
 
 	if err := db.
 		Table("users").
 		Select("firstname").
-		Where("username = ?", t.Sender).
+		Where("username = ?", username).
 		Find(&name).
 		Error; err != nil {
 		return err
@@ -78,7 +77,7 @@ func LikeHuddleComment(db *gorm.DB, t *Like) error {
 }
 
 // Get Huddle comment likes from huddles_comments_likes table
-func GetCommentLikes(db *gorm.DB, commentId int, lastId string) ([]Liker, error) {
+func GetCommentLikes(db *gorm.DB, commentId string, lastId string) ([]Liker, error) {
 	var likes []HuddleCommentLike
 	var likers []Liker
 	var profiles []p.Person
@@ -124,11 +123,11 @@ func GetCommentLikes(db *gorm.DB, commentId int, lastId string) ([]Liker, error)
 	return likers, nil
 }
 
-// Remove Huddle comment like from huddles_comments_likes table
-func RemoveHuddleCommentLike(db *gorm.DB, id int, sender string) error {
+// RemoveHuddleCommentLike from huddles_comments_likes table
+func RemoveHuddleCommentLike(db *gorm.DB, commentId string, username string) error {
 	return db.
 		Table("huddles_comments_likes").
-		Where("comment_id = ? AND sender = ?", id, sender).
+		Where("comment_id = ? AND sender = ?", commentId, username).
 		Delete(&HuddleCommentLike{}).
 		Error
 }

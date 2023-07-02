@@ -18,7 +18,6 @@ func (MessageReaction) TableName() string {
 }
 
 type SendReaction struct {
-	Sender         string
 	Receiver       string
 	Message        string
 	ConversationId int
@@ -26,9 +25,9 @@ type SendReaction struct {
 	Value          string
 }
 
-func MessageReact(db *gorm.DB, t *SendReaction) error {
+func MessageReact(db *gorm.DB, username string, t *SendReaction) error {
 	interaction := MessageReaction{
-		Sender:         t.Sender,
+		Sender:         username,
 		ConversationId: t.ConversationId,
 		MessageId:      t.MessageId,
 		Value:          t.Value,
@@ -37,7 +36,7 @@ func MessageReact(db *gorm.DB, t *SendReaction) error {
 		return err
 	}
 
-	if t.Sender == t.Receiver {
+	if username == t.Receiver {
 		return nil
 	}
 
@@ -59,7 +58,7 @@ func MessageReact(db *gorm.DB, t *SendReaction) error {
 	if err := db.
 		Table("users").
 		Select("username, firstname, profile_photo, messages_notifications").
-		Where("username IN ?", []string{t.Receiver, t.Sender}).
+		Where("username IN ?", []string{t.Receiver, username}).
 		Find(&info).
 		Error; err != nil {
 		return err
@@ -76,7 +75,7 @@ func MessageReact(db *gorm.DB, t *SendReaction) error {
 
 	body := t.Message
 
-	senderInfo := getSenderInfo(info, t.Sender)
+	senderInfo := getSenderInfo(info, username)
 
 	fcmNotification := service.FcmNotification{
 		Data: map[string]interface{}{

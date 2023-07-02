@@ -48,10 +48,10 @@ func GetMutedHuddles(db *gorm.DB, username string) ([]Person, error) {
 }
 
 // RemoveMutedHuddle from muted_huddles table
-func RemoveMutedHuddles(db *gorm.DB, user1 string, user2 string) error {
+func RemoveMutedHuddles(db *gorm.DB, username string, user string) error {
 	return db.
 		Table("muted_huddles").
-		Where("user = ? AND muted = ?", user1, user2).
+		Where("user = ? AND muted = ?", username, user).
 		Delete(&MutedHuddle{}).
 		Error
 }
