@@ -18,6 +18,7 @@ func (HuddleInteracted) TableName() string {
 
 type Interact struct {
 	HuddleId int
+	Topic    string
 	Receiver string
 }
 
@@ -75,7 +76,8 @@ func HuddleInteract(db *gorm.DB, username string, t *Interact) error {
 			"type":     huddleType,
 			"huddleId": t.HuddleId,
 		},
-		Body:    info.Firstname + " interacted 👋",
+		Title:   info.Firstname + " interacted 👋",
+		Body:    t.Topic,
 		Sound:   "default",
 		Devices: *tokens,
 	}

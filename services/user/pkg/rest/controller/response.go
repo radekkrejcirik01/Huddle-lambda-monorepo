@@ -110,6 +110,12 @@ type GetChatsResponse struct {
 	Data    []messaging.Chat `json:"data,omitempty"`
 }
 
+type GetUnreadMessagesNumberResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+	Unread  int64  `json:"unread,omitempty"`
+}
+
 type GetMessagesResponse struct {
 	Status  string                  `json:"status"`
 	Message string                  `json:"message,omitempty"`

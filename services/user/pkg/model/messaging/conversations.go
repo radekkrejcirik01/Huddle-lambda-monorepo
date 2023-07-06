@@ -2,6 +2,7 @@ package messaging
 
 import (
 	"fmt"
+
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"gorm.io/gorm"
 )
@@ -37,6 +38,7 @@ type LastMessage struct {
 	ConversationId int
 	Message        string
 	Time           int64
+	Url            string
 }
 
 // Create conversation in conversations table
@@ -66,6 +68,47 @@ func CreateConversation(db *gorm.DB, t *Create) (uint, error) {
 	return conversation.Id, nil
 }
 
+// GetUnreadMessagesNumber from messages and last_read_messages table
+func GetUnreadMessagesNumber(db *gorm.DB, username string) (int64, error) {
+	var number int64
+	var lastMessagesIds []int64
+
+	// Get last messages by username
+	if err := db.
+		Table("messages").
+		Select("id").
+		Where(`
+					id IN(
+					SELECT
+						MAX(id)
+						FROM messages
+					WHERE
+						conversation_id IN (
+							SELECT
+								conversation_id FROM people_in_conversations
+							WHERE
+								username = ?)
+						GROUP BY
+							conversation_id)`, username).
+		Find(&lastMessagesIds).Error; err != nil {
+		return 0, err
+	}
+
+	if len(lastMessagesIds) == 0 {
+		return 0, nil
+	}
+
+	if err := db.
+		Table("last_read_messages").
+		Where("username = ? AND message_id NOT IN ? AND seen != 1", username, lastMessagesIds).
+		Count(&number).
+		Error; err != nil {
+		return 0, err
+	}
+
+	return number, nil
+}
+
 // Get chats from conversations table
 func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 	var chats []Chat
@@ -82,7 +125,7 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 	// Get last messages by username
 	if err := db.
 		Table("messages").
-		Select("id, sender, conversation_id, message, time").
+		Select("id, sender, conversation_id, message, time, url").
 		Where(idCondition+`
 					id IN(
 					SELECT
@@ -146,6 +189,10 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 	}
 
 	for _, lastMessage := range lastMessages {
+		message := lastMessage.Message
+		if len(lastMessage.Url) > 0 {
+			message = "Photo shared"
+		}
 		name, profilePhoto := getPeopleInfo(
 			lastMessage.ConversationId,
 			peopleInConversations,
@@ -160,7 +207,7 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 			Sender:       lastMessage.Sender,
 			Name:         name,
 			ProfilePhoto: profilePhoto,
-			LastMessage:  lastMessage.Message,
+			LastMessage:  message,
 			IsNewMessage: isNewMessage,
 			IsRead:       isRead,
 			IsLiked:      isLiked,

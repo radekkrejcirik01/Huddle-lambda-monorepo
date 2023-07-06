@@ -31,6 +31,29 @@ func GetChats(c *fiber.Ctx) error {
 	})
 }
 
+// GetUnreadMessagesNumber GET /unread-message
+func GetUnreadMessagesNumber(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
+	unread, err := messaging.GetUnreadMessagesNumber(database.DB, username)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(GetUnreadMessagesNumberResponse{
+		Status:  "success",
+		Message: "Unread messages number successfully got",
+		Unread:  unread,
+	})
+}
+
 // SendMessage POST /message
 func SendMessage(c *fiber.Ctx) error {
 	username, err := middleware.Authorize(c)
@@ -247,5 +270,25 @@ func UpdateLastReadMessage(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(Response{
 		Status:  "success",
 		Message: "Last read message successfully updated",
+	})
+}
+
+// UpdateLastSeenReadMessage PUT /last-seen-read-message
+func UpdateLastSeenReadMessage(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
+	if err := messaging.UpdateLastSeenReadMessage(database.DB, username); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Last seen read message successfully updated",
 	})
 }

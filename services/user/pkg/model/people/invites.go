@@ -229,7 +229,7 @@ func GetUnseenInvites(db *gorm.DB, username string) (int64, error) {
 	var number int64
 	if err := db.
 		Table("invites").
-		Where("receiver = ? AND seen IS NULL", username).
+		Where("receiver = ? AND seen != 1", username).
 		Count(&number).
 		Error; err != nil {
 		return 0, err
@@ -241,7 +241,7 @@ func GetUnseenInvites(db *gorm.DB, username string) (int64, error) {
 func UpdateSeenInvites(db *gorm.DB, username string) error {
 	return db.
 		Table("invites").
-		Where("receiver = ? AND seen IS NULL", username).
+		Where("receiver = ? AND seen != 1", username).
 		Update("seen", 1).
 		Error
 }

@@ -90,6 +90,14 @@ func SendMessage(db *gorm.DB, username string, t *Send) error {
 		return err
 	}
 
+	if err := db.
+		Table("last_read_messages").
+		Where("username = ? AND conversation_id = ?", receiver, t.ConversationId).
+		Update("seen", 0).
+		Error; err != nil {
+		return err
+	}
+
 	var mutedConversation []string
 	if err := db.
 		Table("muted_conversations").
@@ -140,7 +148,7 @@ func SendMessage(db *gorm.DB, username string, t *Send) error {
 		},
 		Title:   senderInfo.Firstname,
 		Body:    body,
-		Sound:   "default",
+		Sound:   "notification.wav",
 		Devices: *tokens,
 	}
 
