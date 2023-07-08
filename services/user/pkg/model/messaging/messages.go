@@ -63,7 +63,7 @@ func SendMessage(db *gorm.DB, username string, t *Send) error {
 	var photoUrl string
 
 	if t.Buffer != nil {
-		url, err := UplaodChatPhoto(db, username, *t.Buffer, *t.FileName)
+		url, err := UploadChatPhoto(username, *t.Buffer, *t.FileName)
 		if err != nil {
 			return err
 		}
@@ -148,7 +148,7 @@ func SendMessage(db *gorm.DB, username string, t *Send) error {
 		},
 		Title:   senderInfo.Firstname,
 		Body:    body,
-		Sound:   "notification.wav",
+		Sound:   "default",
 		Devices: *tokens,
 	}
 
@@ -302,7 +302,7 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 	return messagesData, uint(conversationId), nil
 }
 
-func UplaodChatPhoto(db *gorm.DB, username string, buffer string, fileName string) (string, error) {
+func UploadChatPhoto(username string, buffer string, fileName string) (string, error) {
 	accessKey, secretAccessKey := database.GetCredentials()
 
 	sess := session.Must(session.NewSession(

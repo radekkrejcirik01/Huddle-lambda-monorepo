@@ -22,27 +22,13 @@ type Interact struct {
 	Receiver string
 }
 
-type Interaction struct {
-	Sender    string
-	Confirmed int
-}
-
-type Info struct {
-	Firstname                 string
-	InteractionsNotifications int
-}
-
 type UserInteracted struct {
 	Username     string `json:"username"`
 	Firstname    string `json:"name"`
 	ProfilePhoto string `json:"profilePhoto"`
 }
 
-type RemoveConfirm struct {
-	Id int
-}
-
-// Add Huddle interaction to huddles_interacted table
+// HuddleInteract to huddles_interacted table
 func HuddleInteract(db *gorm.DB, username string, t *Interact) error {
 	interaction := HuddleInteracted{
 		Sender:   username,
@@ -52,18 +38,28 @@ func HuddleInteract(db *gorm.DB, username string, t *Interact) error {
 		return err
 	}
 
-	var info Info
+	var interactionsNotifications int
 	if err := db.
 		Table("users").
-		Select("firstname, interactions_notifications").
+		Select("interactions_notifications").
 		Where("username = ?", t.Receiver).
-		Find(&info).
+		Find(&interactionsNotifications).
 		Error; err != nil {
 		return err
 	}
 
-	if info.InteractionsNotifications != 1 {
+	if interactionsNotifications != 1 {
 		return nil
+	}
+
+	var name string
+	if err := db.
+		Table("users").
+		Select("firstname").
+		Where("username = ?", username).
+		Find(&name).
+		Error; err != nil {
+		return err
 	}
 
 	tokens := &[]string{}
@@ -76,7 +72,7 @@ func HuddleInteract(db *gorm.DB, username string, t *Interact) error {
 			"type":     huddleType,
 			"huddleId": t.HuddleId,
 		},
-		Title:   info.Firstname + " interacted 👋",
+		Title:   name + " interacted 👋",
 		Body:    t.Topic,
 		Sound:   "default",
 		Devices: *tokens,
