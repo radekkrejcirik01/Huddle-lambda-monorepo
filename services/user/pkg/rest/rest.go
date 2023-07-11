@@ -60,6 +60,7 @@ func Create() *fiber.App {
 	app.Delete("/muted-huddles/:user", controller.RemoveMutedHuddles)
 	app.Delete("/device", controller.DeleteDevice)
 	app.Delete("/conversation-like/:conversationId", controller.RemoveConversationLike)
+	app.Delete("/account", controller.DeleteAccount)
 
 	return app
 }

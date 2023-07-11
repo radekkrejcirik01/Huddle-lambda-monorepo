@@ -146,6 +146,26 @@ func UpdateUserNotification(c *fiber.Ctx) error {
 	})
 }
 
+// DeleteAccount DELETE /account
+func DeleteAccount(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
+	if err := users.DeleteAccount(database.DB, username); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Account successfully deleted",
+	})
+}
+
 // UploadPhoto POST /photo
 func UploadPhoto(c *fiber.Ctx) error {
 	username, err := middleware.Authorize(c)

@@ -3,12 +3,17 @@ package users
 import (
 	"bytes"
 	"encoding/base64"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/database"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/middleware"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/devices"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/huddles"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/messaging"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"gorm.io/gorm"
 )
 
@@ -136,6 +141,146 @@ func UpdateUserNotification(db *gorm.DB, username string, t *UpdateNotification)
 		Table("users").
 		Where("username = ?", username).
 		Update(t.Notification, t.Value).
+		Error
+}
+
+// DeleteAccount in database
+func DeleteAccount(db *gorm.DB, username string) error {
+	var deleteConversations []int
+
+	if err := db.
+		Table("people_in_conversations").
+		Select("conversation_id").
+		Where("username = ?", username).
+		Find(&deleteConversations).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("people_in_conversations").
+		Where("conversation_id IN ?", deleteConversations).
+		Delete(&messaging.PersonInConversation{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("conversations").
+		Where("id IN ?", deleteConversations).
+		Delete(&messaging.Conversation{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("messages").
+		Where("conversation_id IN ?", deleteConversations).
+		Delete(&messaging.Message{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("invites").
+		Where("sender = ? OR receiver = ?", username, username).
+		Delete(&people.Invite{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("conversations_likes").
+		Where("sender = ?", username).
+		Delete(&people.Invite{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("devices").
+		Where("username = ?", username).
+		Delete(&devices.Device{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("huddles").
+		Where("created_by = ?", username).
+		Delete(&huddles.Huddle{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("huddles_comments").
+		Where("sender = ?", username).
+		Delete(&huddles.HuddleComment{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("huddles_comments_likes").
+		Where("sender = ?", username).
+		Delete(&huddles.HuddleCommentLike{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("huddles_interacted").
+		Where("sender = ?", username).
+		Delete(&huddles.HuddleInteracted{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("last_read_messages").
+		Where("conversation_id IN ?", deleteConversations).
+		Delete(&messaging.LastReadMessage{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("messages_reactions").
+		Where("conversation_id IN ?", deleteConversations).
+		Delete(&messaging.MessageReaction{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("muted_conversations").
+		Where("conversation_id IN ?", deleteConversations).
+		Delete(&people.MutedConversation{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("muted_huddles").
+		Where("user = ?", username).
+		Delete(&people.MutedHuddle{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("hides").
+		Where("user = ?", username).
+		Delete(&people.Hide{}).
+		Error; err != nil {
+		return err
+	}
+
+	return db.
+		Table("users").
+		Where("username = ?", username).
+		Delete(User{}).
 		Error
 }
 
