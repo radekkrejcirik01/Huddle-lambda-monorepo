@@ -1,6 +1,7 @@
 package messaging
 
 import (
+	"errors"
 	"fmt"
 
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
@@ -169,7 +170,18 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 		return nil, err
 	}
 
-	usernames := getUsernamesFromPeopleInConversations(peopleInConversations)
+	usernamesInConversations := getUsernamesFromPeopleInConversations(peopleInConversations)
+
+	var invites []p.Invite
+	if err := db.
+		Table("invites").
+		Where("((sender = ? AND receiver IN ?) OR (sender IN ? AND receiver = ?)) AND accepted = 1",
+			username, usernamesInConversations, usernamesInConversations, username).
+		Find(&invites).Error; err != nil {
+		return nil, err
+	}
+
+	usernames := p.GetUsernamesFromInvites(invites, username)
 
 	if err := db.
 		Table("users").
@@ -193,11 +205,15 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 		if len(lastMessage.Url) > 0 {
 			message = "Photo shared"
 		}
-		name, profilePhoto := getPeopleInfo(
+		name, profilePhoto, err := getPeopleInfo(
 			lastMessage.ConversationId,
 			peopleInConversations,
 			people,
 		)
+		if err != nil {
+			continue
+		}
+
 		isNewMessage := getIsNewMessage(lastReadMessages, lastMessage, username)
 		isRead := getIsRead(lastReadMessages, lastMessage, username)
 		isLiked := getIsLiked(lastMessage, likedConversations)
@@ -264,9 +280,10 @@ func getPeopleInfo(
 	conversationId int,
 	peopleInConversations []PersonInConversation,
 	people []p.Person,
-) (string, string) {
+) (string, string, error) {
 	var name string
 	var profilePhoto string
+	err := errors.New("no info")
 
 	for _, personInConversation := range peopleInConversations {
 		if personInConversation.ConversationId == conversationId {
@@ -274,6 +291,7 @@ func getPeopleInfo(
 				if person.Username == personInConversation.Username {
 					name = person.Firstname
 					profilePhoto = person.ProfilePhoto
+					err = nil
 
 					break
 				}
@@ -281,7 +299,7 @@ func getPeopleInfo(
 		}
 	}
 
-	return name, profilePhoto
+	return name, profilePhoto, err
 }
 
 func getIsNewMessage(lastReadMessages []LastReadMessage, lastMessage LastMessage, username string) int {

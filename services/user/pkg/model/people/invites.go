@@ -32,7 +32,7 @@ type InviteResponseData struct {
 	User Person `json:"user"`
 }
 
-// Add invite to invites table
+// AddPersonInvite in invites table
 func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 	if t.Sender == t.Receiver {
 		return "Cannot invite yourself 😀", nil
@@ -44,6 +44,20 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 		}
 
 		return "", err
+	}
+
+	var blockedUsernames []string
+	if err := db.
+		Table("blocked").
+		Select("blocked").
+		Where("user = ? AND blocked = ?", t.Receiver, t.Sender).
+		Find(&blockedUsernames).
+		Error; err != nil {
+		return "", err
+	}
+
+	if len(blockedUsernames) > 0 {
+		return "Could not send invite to this user", nil
 	}
 
 	invite := Invite{
@@ -86,7 +100,7 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 
 	fcmNotification := service.FcmNotification{
 		Data: map[string]interface{}{
-			"type": "people",
+			"type": "invite",
 		},
 		Body:    t.Sender + " sends friend invite",
 		Sound:   "default",
@@ -102,10 +116,9 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 }
 
 // Get people from invites table
-func GetPeople(db *gorm.DB, username string, lastId string) ([]Person, int64, error) {
+func GetPeople(db *gorm.DB, username string, lastId string) ([]Person, error) {
 	var invites []Invite
 	var people []Person
-	var invitesNumber int64
 
 	var idCondition string
 	if lastId != "" {
@@ -118,41 +131,29 @@ func GetPeople(db *gorm.DB, username string, lastId string) ([]Person, int64, er
 		Order("id DESC").
 		Limit(20).
 		Find(&invites).Error; err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	usernames := GetUsernamesFromInvites(invites, username)
 
 	var profiles []Person
-	if err := db.Table("users").Where("username IN ?", usernames).Find(&profiles).Error; err != nil {
-		return nil, 0, err
+	if err := db.
+		Table("users").
+		Where("username IN ?", usernames).
+		Find(&profiles).
+		Error; err != nil {
+		return nil, err
 	}
 
 	// Reorder people by invites
-	for _, invite := range invites {
-		var inviteUser string
-
-		if invite.Sender == username {
-			inviteUser = invite.Receiver
-		} else {
-			inviteUser = invite.Sender
-		}
-
-		person := getPersonByUsername(profiles, inviteUser)
-		person.Id = int(invite.Id)
+	for i, username := range usernames {
+		person := getPersonByUsername(profiles, username)
+		person.Id = i + 1
 
 		people = append(people, person)
 	}
 
-	if err := db.
-		Table("invites").
-		Where("receiver = ? AND accepted = 0", username).
-		Count(&invitesNumber).
-		Error; err != nil {
-		return nil, 0, err
-	}
-
-	return people, invitesNumber, nil
+	return people, nil
 }
 
 // Get invites from invites table
@@ -207,6 +208,14 @@ func AcceptPersonInvite(db *gorm.DB, t *Invite) error {
 		return err
 	}
 
+	if err := db.
+		Table("blocked").
+		Where("user = ? AND blocked = ?", t.Receiver, t.Sender).
+		Delete(&Blocked{}).
+		Error; err != nil {
+		return err
+	}
+
 	tokens := &[]string{}
 	if err := service.GetTokensByUsername(db, tokens, t.Receiver); err != nil {
 		return nil
@@ -246,7 +255,7 @@ func UpdateSeenInvites(db *gorm.DB, username string) error {
 		Error
 }
 
-// Get usernames from accepted invites
+// GetUsernamesFromInvites
 func GetUsernamesFromInvites(acceptedInvites []Invite, username string) []string {
 	usernames := make([]string, 0)
 	for _, invite := range acceptedInvites {

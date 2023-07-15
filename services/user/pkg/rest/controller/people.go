@@ -47,7 +47,7 @@ func GetPeople(c *fiber.Ctx) error {
 	}
 	lastId := c.Params("lastId")
 
-	peopleData, invitesNumber, err := people.GetPeople(database.DB, username, lastId)
+	peopleData, err := people.GetPeople(database.DB, username, lastId)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
@@ -56,10 +56,9 @@ func GetPeople(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(PeopleResponse{
-		Status:        "success",
-		Message:       "People successfully got",
-		Data:          peopleData,
-		InvitesNumber: invitesNumber,
+		Status:  "success",
+		Message: "People successfully got",
+		Data:    peopleData,
 	})
 }
 
@@ -245,6 +244,44 @@ func MuteHuddles(c *fiber.Ctx) error {
 	})
 }
 
+// BlockUser POST /block-user
+func BlockUser(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
+	t := &people.Blocked{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if t.Blocked == username {
+		return c.Status(fiber.StatusOK).JSON(Response{
+			Status:  "selfblock",
+			Message: "Why are you blocking yourself 😀",
+		})
+	}
+
+	t.User = username
+
+	if err := people.BlockUser(database.DB, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: "Could not block user",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "User blocked successfully",
+	})
+}
+
 // GetMutedHuddles GET /muted-huddles
 func GetMutedHuddles(c *fiber.Ctx) error {
 	username, err := middleware.Authorize(c)
@@ -328,7 +365,7 @@ func IsConversationMuted(c *fiber.Ctx) error {
 	}
 	conversationId := c.Params("conversationId")
 
-	isMuted, getErr := people.IsConversationMuted(database.DB, username, conversationId)
+	isMuted, cPeople, getErr := people.IsConversationMuted(database.DB, username, conversationId)
 
 	if getErr != nil {
 		return c.Status(fiber.StatusOK).JSON(Response{
@@ -341,5 +378,6 @@ func IsConversationMuted(c *fiber.Ctx) error {
 		Status:  "success",
 		Message: "Conversation mute successfully updated",
 		Muted:   isMuted,
+		People:  cPeople,
 	})
 }

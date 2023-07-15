@@ -37,10 +37,9 @@ type PeopleNumberResponse struct {
 }
 
 type PeopleResponse struct {
-	Status        string          `json:"status"`
-	Message       string          `json:"message,omitempty"`
-	Data          []people.Person `json:"data,omitempty"`
-	InvitesNumber int64           `json:"invitesNumber,omitempty"`
+	Status  string          `json:"status"`
+	Message string          `json:"message,omitempty"`
+	Data    []people.Person `json:"data,omitempty"`
 }
 
 type GetInvitesResponse struct {
@@ -68,9 +67,10 @@ type GetMutedHuddlesResponse struct {
 }
 
 type GetIsConversationMutedResponse struct {
-	Status  string `json:"status"`
-	Message string `json:"message,omitempty"`
-	Muted   bool   `json:"muted,omitempty"`
+	Status  string   `json:"status"`
+	Message string   `json:"message,omitempty"`
+	Muted   bool     `json:"muted,omitempty"`
+	People  []string `json:"people,omitempty"`
 }
 
 type GetHuddlesResponse struct {

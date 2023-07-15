@@ -26,13 +26,25 @@ func MuteConversation(db *gorm.DB, t *MutedConversation) error {
 		Error
 }
 
-func IsConversationMuted(db *gorm.DB, username string, conversationId string) (bool, error) {
+func IsConversationMuted(db *gorm.DB, username string, conversationId string) (bool, []string, error) {
+	var peopleInConversation []string
+
+	if err := db.
+		Table("people_in_conversations").
+		Select("username").
+		Where("conversation_id = ? AND username != ?", conversationId, username).
+		Find(&peopleInConversation).
+		Error; err != nil {
+		return false, peopleInConversation, err
+	}
+
 	if err := db.
 		Table("muted_conversations").
 		Where("user = ? AND conversation_id = ?", username, conversationId).
 		First(&MutedConversation{}).
 		Error; err != nil {
-		return false, err
+		return false, peopleInConversation, nil
 	}
-	return true, nil
+
+	return true, peopleInConversation, nil
 }
