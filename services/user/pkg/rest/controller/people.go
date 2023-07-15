@@ -229,6 +229,13 @@ func MuteHuddles(c *fiber.Ctx) error {
 		})
 	}
 
+	if t.Muted == username {
+		return c.Status(fiber.StatusOK).JSON(Response{
+			Status:  "selfmute",
+			Message: "Why are you muting yourself 😀",
+		})
+	}
+
 	t.User = username
 
 	if err := people.MuteHuddles(database.DB, t); err != nil {
