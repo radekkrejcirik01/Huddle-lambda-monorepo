@@ -146,7 +146,7 @@ func SendMessage(db *gorm.DB, username string, t *Send) error {
 			"name":           senderInfo.Firstname,
 			"profilePhoto":   senderInfo.ProfilePhoto,
 		},
-		Title:   senderInfo.Firstname,
+		Title:   senderInfo.Username,
 		Body:    body,
 		Sound:   "default",
 		Devices: *tokens,
