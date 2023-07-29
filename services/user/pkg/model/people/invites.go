@@ -223,7 +223,7 @@ func AcceptPersonInvite(db *gorm.DB, t *Invite) error {
 
 	fcmNotification := service.FcmNotification{
 		Data: map[string]interface{}{
-			"type": "invite",
+			"type": "friends",
 		},
 		Body:    t.Sender + " accepted friend invite 🙌",
 		Sound:   "default",

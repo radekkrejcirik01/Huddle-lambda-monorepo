@@ -104,7 +104,8 @@ func CreateHuddle(db *gorm.DB, username string, t *NewHuddle) error {
 			"type":     huddleType,
 			"huddleId": huddle.Id,
 		},
-		Body:    t.Name + " created Huddle ✨" + t.Topic + "✨",
+		Title:   t.Name + " posted huddle",
+		Body:    "✨" + t.Topic + "✨",
 		Devices: tokens,
 	}
 

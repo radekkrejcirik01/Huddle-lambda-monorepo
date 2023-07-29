@@ -38,6 +38,10 @@ func HuddleInteract(db *gorm.DB, username string, t *Interact) error {
 		return err
 	}
 
+	if t.Receiver == username {
+		return nil
+	}
+
 	var interactionsNotifications int
 	if err := db.
 		Table("users").
