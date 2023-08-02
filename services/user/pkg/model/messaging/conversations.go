@@ -3,9 +3,10 @@ package messaging
 import (
 	"errors"
 	"fmt"
-
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/huddles"
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"gorm.io/gorm"
+	"time"
 )
 
 type Conversation struct {
@@ -30,7 +31,13 @@ type Chat struct {
 	IsNewMessage int    `json:"isNewMessage,omitempty"`
 	IsRead       int    `json:"isRead,omitempty"`
 	IsLiked      int    `json:"isLiked,omitempty"`
+	NewHuddles   int64  `json:"newHuddles,omitempty"`
 	Time         int64  `json:"time"`
+}
+
+type HuddleInfo struct {
+	Id        int
+	CreatedBy string
 }
 
 type LastMessage struct {
@@ -58,8 +65,16 @@ func CreateConversation(db *gorm.DB, t *Create) (uint, error) {
 		return 0, err
 	}
 
-	if err := db.Table("last_read_messages").Create(
-		[]LastReadMessage{
+	if err := db.Table("last_seen_messages").Create(
+		[]LastSeenMessage{
+			{Username: t.Sender, ConversationId: int(conversation.Id)},
+			{Username: t.Receiver, ConversationId: int(conversation.Id)},
+		}).Error; err != nil {
+		return 0, err
+	}
+
+	if err := db.Table("last_seen_huddles").Create(
+		[]huddles.LastSeenHuddle{
 			{Username: t.Sender, ConversationId: int(conversation.Id)},
 			{Username: t.Receiver, ConversationId: int(conversation.Id)},
 		}).Error; err != nil {
@@ -69,53 +84,14 @@ func CreateConversation(db *gorm.DB, t *Create) (uint, error) {
 	return conversation.Id, nil
 }
 
-// GetUnreadMessagesNumber from messages and last_read_messages table
-func GetUnreadMessagesNumber(db *gorm.DB, username string) (int64, error) {
-	var number int64
-	var lastMessagesIds []int64
-
-	// Get last messages by username
-	if err := db.
-		Table("messages").
-		Select("id").
-		Where(`
-					id IN(
-					SELECT
-						MAX(id)
-						FROM messages
-					WHERE
-						conversation_id IN (
-							SELECT
-								conversation_id FROM people_in_conversations
-							WHERE
-								username = ?)
-						GROUP BY
-							conversation_id)`, username).
-		Find(&lastMessagesIds).Error; err != nil {
-		return 0, err
-	}
-
-	if len(lastMessagesIds) == 0 {
-		return 0, nil
-	}
-
-	if err := db.
-		Table("last_read_messages").
-		Where("username = ? AND message_id NOT IN ? AND seen != 1", username, lastMessagesIds).
-		Count(&number).
-		Error; err != nil {
-		return 0, err
-	}
-
-	return number, nil
-}
-
 // Get chats from conversations table
 func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 	var chats []Chat
 	var peopleInConversations []PersonInConversation
 	var lastMessages []LastMessage
-	var lastReadMessages []LastReadMessage
+	var lastSeenMessages []LastSeenMessage
+	var lastSeenHuddles []huddles.LastSeenHuddle
+	var createdHuddles []HuddleInfo
 	var people []p.Person
 	var likedConversations []ConversationLike
 
@@ -163,9 +139,17 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 	}
 
 	if err := db.
-		Table("last_read_messages").
-		Where("conversation_id IN ?", conversationsIds).
-		Find(&lastReadMessages).
+		Table("last_seen_messages").
+		Where("username = ? AND conversation_id IN ?", username, conversationsIds).
+		Find(&lastSeenMessages).
+		Error; err != nil {
+		return nil, err
+	}
+
+	if err := db.
+		Table("last_seen_huddles").
+		Where("username = ? AND conversation_id IN ?", username, conversationsIds).
+		Find(&lastSeenHuddles).
 		Error; err != nil {
 		return nil, err
 	}
@@ -200,6 +184,20 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 		return nil, err
 	}
 
+	if len(lastSeenHuddles) > 0 {
+		// Two months ago in unix time
+		t := time.Now().AddDate(0, -1, 0).Unix()
+
+		if err := db.
+			Table("huddles").
+			Select("id, created_by").
+			Where("created_by IN ? AND created > ?", usernamesInConversations, t).
+			Find(&createdHuddles).
+			Error; err != nil {
+			return nil, err
+		}
+	}
+
 	for _, lastMessage := range lastMessages {
 		message := lastMessage.Message
 		if len(lastMessage.Url) > 0 {
@@ -214,9 +212,15 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 			continue
 		}
 
-		isNewMessage := getIsNewMessage(lastReadMessages, lastMessage, username)
-		isRead := getIsRead(lastReadMessages, lastMessage, username)
+		isNewMessage := getIsNewMessage(lastSeenMessages, lastMessage, username)
+		isRead := getIsRead(lastSeenMessages, lastMessage, username)
 		isLiked := getIsLiked(lastMessage, likedConversations)
+		newHuddles := getNewHuddlesCount(
+			createdHuddles,
+			lastMessage.ConversationId,
+			peopleInConversations,
+			lastSeenHuddles,
+		)
 
 		chats = append(chats, Chat{
 			Id:           lastMessage.ConversationId,
@@ -227,6 +231,7 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 			IsNewMessage: isNewMessage,
 			IsRead:       isRead,
 			IsLiked:      isLiked,
+			NewHuddles:   newHuddles,
 			Time:         lastMessage.Time,
 		})
 	}
@@ -302,26 +307,26 @@ func getPeopleInfo(
 	return name, profilePhoto, err
 }
 
-func getIsNewMessage(lastReadMessages []LastReadMessage, lastMessage LastMessage, username string) int {
+func getIsNewMessage(lastSeenMessages []LastSeenMessage, lastMessage LastMessage, username string) int {
 	if lastMessage.Sender == username {
 		return 0
 	}
 
-	for _, lastReadMessage := range lastReadMessages {
-		if lastReadMessage.MessageId == int(lastMessage.Id) && lastReadMessage.Username == username {
+	for _, lastSeenMessage := range lastSeenMessages {
+		if lastSeenMessage.MessageId == int(lastMessage.Id) && lastSeenMessage.Username == username {
 			return 0
 		}
 	}
 	return 1
 }
 
-func getIsRead(lastReadMessages []LastReadMessage, lastMessage LastMessage, username string) int {
+func getIsRead(lastSeenMessages []LastSeenMessage, lastMessage LastMessage, username string) int {
 	if lastMessage.Sender != username {
 		return 0
 	}
 
-	for _, lastReadMessage := range lastReadMessages {
-		if lastReadMessage.MessageId == int(lastMessage.Id) && lastReadMessage.Username != username {
+	for _, lastSeenMessage := range lastSeenMessages {
+		if lastSeenMessage.MessageId == int(lastMessage.Id) && lastSeenMessage.Username != username {
 			return 1
 		}
 	}
@@ -335,6 +340,40 @@ func getIsLiked(lastMessage LastMessage, likedConversations []ConversationLike) 
 		}
 	}
 	return 0
+}
+
+func getNewHuddlesCount(
+	createdHuddles []HuddleInfo,
+	conversationId int,
+	peopleInConversations []PersonInConversation,
+	lastSeenHuddles []huddles.LastSeenHuddle,
+) int64 {
+	var huddlesCount int64
+	var personInConversation string
+
+	for _, person := range peopleInConversations {
+		if person.ConversationId == conversationId {
+			personInConversation = person.Username
+			break
+		}
+	}
+
+	for _, huddle := range createdHuddles {
+		var lastSeenHuddleId int
+
+		for _, lastSeenHuddle := range lastSeenHuddles {
+			if lastSeenHuddle.ConversationId == conversationId {
+				lastSeenHuddleId = lastSeenHuddle.HuddleId
+				break
+			}
+		}
+
+		if huddle.Id > lastSeenHuddleId && huddle.CreatedBy == personInConversation {
+			huddlesCount += 1
+		}
+	}
+
+	return huddlesCount
 }
 
 func rearrangeChats(chats []Chat) []Chat {

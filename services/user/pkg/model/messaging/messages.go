@@ -184,7 +184,7 @@ func GetConversation(db *gorm.DB, conversationId string, lastId string) ([]Messa
 	var likedHuddlesIds []int
 	var messagesReactions []Reaction
 	var messagesData []MessageData
-	var lastReadMessages []LastReadMessage
+	var lastSeenMessages []LastSeenMessage
 
 	var idCondition string
 	if lastId != "" {
@@ -255,16 +255,16 @@ func GetConversation(db *gorm.DB, conversationId string, lastId string) ([]Messa
 	}
 
 	if err := db.
-		Table("last_read_messages").
+		Table("last_seen_messages").
 		Where("conversation_id = ?", conversationId).
-		Find(&lastReadMessages).
+		Find(&lastSeenMessages).
 		Error; err != nil {
 		return nil, err
 	}
 
 	for _, message := range messages {
 		reactions := getReactions(message.Id, messagesReactions)
-		readBy := getReadBy(lastReadMessages, message.Id, message.Sender)
+		readBy := getReadBy(lastSeenMessages, message.Id, message.Sender)
 
 		messagesData = append(messagesData, MessageData{
 			Id:        message.Id,
@@ -313,7 +313,7 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 	var messagesReactions []Reaction
 	var messagesData []MessageData
 	var conversationId int
-	var lastReadMessages []LastReadMessage
+	var lastSeenMessages []LastSeenMessage
 
 	// Get conversation id by 2 usernames
 	if err := db.
@@ -367,16 +367,16 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 	}
 
 	if err := db.
-		Table("last_read_messages").
+		Table("last_seen_messages").
 		Where("conversation_id = ?", conversationId).
-		Find(&lastReadMessages).
+		Find(&lastSeenMessages).
 		Error; err != nil {
 		return nil, 0, err
 	}
 
 	for _, message := range messages {
 		reactions := getReactions(message.Id, messagesReactions)
-		readBy := getReadBy(lastReadMessages, message.Id, message.Sender)
+		readBy := getReadBy(lastSeenMessages, message.Id, message.Sender)
 
 		messagesData = append(messagesData, MessageData{
 			Id:        message.Id,
@@ -459,11 +459,11 @@ func getMessagesIds(messages []Message) []uint {
 	return ids
 }
 
-func getReadBy(lastReadMessages []LastReadMessage, messageId uint, sender string) []string {
+func getReadBy(lastSeenMessages []LastSeenMessage, messageId uint, sender string) []string {
 	var users []string
-	for _, lastReadMessage := range lastReadMessages {
-		if lastReadMessage.MessageId >= int(messageId) && lastReadMessage.Username != sender {
-			users = append(users, lastReadMessage.Username)
+	for _, lastSeenMessage := range lastSeenMessages {
+		if lastSeenMessage.MessageId >= int(messageId) && lastSeenMessage.Username != sender {
+			users = append(users, lastSeenMessage.Username)
 		}
 	}
 	return users

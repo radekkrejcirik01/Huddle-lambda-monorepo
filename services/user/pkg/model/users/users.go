@@ -238,9 +238,17 @@ func DeleteAccount(db *gorm.DB, username string) error {
 	}
 
 	if err := db.
-		Table("last_read_messages").
+		Table("last_seen_messages").
 		Where("conversation_id IN ?", deleteConversations).
-		Delete(&messaging.LastReadMessage{}).
+		Delete(&messaging.LastSeenMessage{}).
+		Error; err != nil {
+		return err
+	}
+
+	if err := db.
+		Table("last_seen_huddles").
+		Where("conversation_id IN ?", deleteConversations).
+		Delete(&huddles.LastSeenHuddle{}).
 		Error; err != nil {
 		return err
 	}

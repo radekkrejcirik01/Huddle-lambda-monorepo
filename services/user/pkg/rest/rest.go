@@ -27,7 +27,6 @@ func Create() *fiber.App {
 	app.Get("/muted-conversation/:conversationId", controller.IsConversationMuted)
 	app.Get("/muted-huddles", controller.GetMutedHuddles)
 	app.Get("/conversation-like/:conversationId", controller.GetConversationLike)
-	app.Get("/unread-messages", controller.GetUnreadMessagesNumber)
 
 	app.Post("/user", controller.CreateUser)
 	app.Post("/login", controller.LoginUser)
@@ -51,8 +50,7 @@ func Create() *fiber.App {
 	app.Put("/hide", controller.UpdateHiddenPeople)
 	app.Put("/notification", controller.UpdateUserNotification)
 	app.Put("/seen-invites", controller.UpdateSeenInvites)
-	app.Put("/last-read-message", controller.UpdateLastReadMessage)
-	app.Put("/last-seen-read-message", controller.UpdateLastSeenReadMessage)
+	app.Put("/last-seen", controller.UpdateLastSeen)
 
 	app.Delete("/huddle/:id", controller.DeleteHuddle)
 	app.Delete("/comment/:id", controller.DeleteHuddleComment)
