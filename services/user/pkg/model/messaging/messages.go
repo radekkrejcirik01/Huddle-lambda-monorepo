@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	H "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/huddles"
+	"sort"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -42,9 +44,26 @@ type Info struct {
 	MessagesNotifications int
 }
 
+type UserDetails struct {
+	Username     string
+	Firstname    string
+	ProfilePhoto *string
+}
+
 type Reaction struct {
 	MessageId int
 	Value     string
+}
+
+type Huddle struct {
+	Id             int     `json:"id"`
+	Sender         string  `json:"sender"`
+	Name           string  `json:"name"`
+	ProfilePhoto   *string `json:"profilePhoto,omitempty"`
+	Message        string  `json:"message"`
+	Color          int     `json:"color"`
+	Liked          int     `json:"liked"`
+	CommentsNumber int     `json:"commentsNumber"`
 }
 
 type MessageData struct {
@@ -53,6 +72,7 @@ type MessageData struct {
 	Message   string   `json:"message"`
 	Time      int64    `json:"time"`
 	Url       string   `json:"url,omitempty"`
+	Huddle    *Huddle  `json:"huddle,omitempty"`
 	Reactions []string `json:"reactions,omitempty"`
 	ReadBy    []string `json:"readBy,omitempty"`
 }
@@ -158,6 +178,10 @@ func SendMessage(db *gorm.DB, username string, t *Send) error {
 // GetConversation messages and reactions from messages table
 func GetConversation(db *gorm.DB, conversationId string, lastId string) ([]MessageData, error) {
 	var messages []Message
+	var peopleInConversations []string
+	var huddles []H.Huddle
+	var huddleIds []int
+	var likedHuddlesIds []int
 	var messagesReactions []Reaction
 	var messagesData []MessageData
 	var lastReadMessages []LastReadMessage
@@ -179,6 +203,45 @@ func GetConversation(db *gorm.DB, conversationId string, lastId string) ([]Messa
 
 	if len(messages) == 0 {
 		return nil, nil
+	}
+
+	if err := db.
+		Table("people_in_conversations").
+		Select("username").
+		Where("conversation_id = ?", conversationId).
+		Find(&peopleInConversations).
+		Error; err != nil {
+		return nil, err
+	}
+
+	var userDetails []UserDetails
+	if err := db.
+		Table("users").
+		Select("username, firstname, profile_photo").
+		Where("username IN ?", peopleInConversations).
+		Find(&userDetails).
+		Error; err != nil {
+		return nil, err
+	}
+
+	lastMessageTime := messages[len(messages)-1].Time
+
+	if err := db.
+		Table("huddles").
+		Where("created_by IN ? AND created >= ?", peopleInConversations, lastMessageTime).
+		Find(&huddles).
+		Error; err != nil {
+		return nil, err
+	}
+
+	huddleIds = H.GetIdsFromHuddlesArray(huddles)
+
+	if err := db.
+		Table("huddles_interacted").
+		Select("huddle_id").
+		Where("huddle_id IN ?", huddleIds).
+		Find(&likedHuddlesIds).Error; err != nil {
+		return nil, err
 	}
 
 	messagesIds := getMessagesIds(messages)
@@ -213,6 +276,33 @@ func GetConversation(db *gorm.DB, conversationId string, lastId string) ([]Messa
 			ReadBy:    readBy,
 		})
 	}
+
+	for _, huddle := range huddles {
+		name, profilePhoto := getUserDetails(huddle.CreatedBy, userDetails)
+		liked := H.GetInteraction(likedHuddlesIds, int(huddle.Id))
+
+		h := &Huddle{
+			Id:           int(huddle.Id),
+			Sender:       huddle.CreatedBy,
+			Name:         name,
+			ProfilePhoto: profilePhoto,
+			Message:      huddle.Topic,
+			Color:        huddle.Color,
+			Liked:        liked,
+		}
+
+		messagesData = append(messagesData, MessageData{
+			Id:      huddle.Id,
+			Sender:  huddle.CreatedBy,
+			Message: huddle.Topic,
+			Time:    huddle.Created,
+			Huddle:  h,
+		})
+	}
+
+	sort.Slice(messagesData, func(i, y int) bool {
+		return messagesData[i].Time > messagesData[y].Time
+	})
 
 	return messagesData, nil
 }
@@ -377,4 +467,18 @@ func getReadBy(lastReadMessages []LastReadMessage, messageId uint, sender string
 		}
 	}
 	return users
+}
+
+func getUserDetails(username string, userDetails []UserDetails) (string, *string) {
+	var name string
+	var profilePhoto *string
+
+	for _, detail := range userDetails {
+		if detail.Username == username {
+			name = detail.Firstname
+			profilePhoto = detail.ProfilePhoto
+		}
+	}
+
+	return name, profilePhoto
 }
