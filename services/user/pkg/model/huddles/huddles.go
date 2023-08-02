@@ -3,8 +3,6 @@ package huddles
 import (
 	"errors"
 	"fmt"
-	"time"
-
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
@@ -17,8 +15,7 @@ const huddleType = "huddle"
 type Huddle struct {
 	Id        uint `gorm:"primary_key;auto_increment;not_null"`
 	CreatedBy string
-	Topic     string
-	Color     int
+	Message   string
 	Created   int64 `gorm:"autoCreateTime"`
 }
 
@@ -27,9 +24,8 @@ func (Huddle) TableName() string {
 }
 
 type NewHuddle struct {
-	Name  string
-	Topic string
-	Color int
+	Name    string
+	Message string
 }
 
 type HuddleData struct {
@@ -37,8 +33,7 @@ type HuddleData struct {
 	CreatedBy      string `json:"createdBy"`
 	Name           string `json:"name"`
 	ProfilePhoto   string `json:"profilePhoto"`
-	Topic          string `json:"topic"`
-	Color          int    `json:"color"`
+	Message        string `json:"message"`
 	Interacted     int    `json:"interacted,omitempty"`
 	CommentsNumber int    `json:"commentsNumber,omitempty"`
 }
@@ -49,16 +44,15 @@ type Invite struct {
 }
 
 type Update struct {
-	Id    int
-	Topic string
+	Id      int
+	Message string
 }
 
 // CreateHuddle in huddles table
 func CreateHuddle(db *gorm.DB, username string, t *NewHuddle) error {
 	huddle := Huddle{
 		CreatedBy: username,
-		Topic:     t.Topic,
-		Color:     t.Color,
+		Message:   t.Message,
 	}
 	if err := db.Table("huddles").Create(&huddle).Error; err != nil {
 		return err
@@ -105,7 +99,7 @@ func CreateHuddle(db *gorm.DB, username string, t *NewHuddle) error {
 			"huddleId": huddle.Id,
 		},
 		Title:   t.Name + " posted huddle",
-		Body:    t.Topic,
+		Body:    t.Message,
 		Devices: tokens,
 	}
 
@@ -149,136 +143,14 @@ func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, 
 			Id:           int(huddle.Id),
 			CreatedBy:    huddle.CreatedBy,
 			Name:         profileInfo.Firstname,
-			Color:        huddle.Color,
 			ProfilePhoto: profileInfo.ProfilePhoto,
-			Topic:        huddle.Topic,
+			Message:      huddle.Message,
 			Interacted:   interacted,
 		})
 
 	}
 
 	return huddlesData, nil
-}
-
-// Get Huddles from huddles table
-func GetHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, error) {
-	var huddlesData []HuddleData
-	var invites []Invite
-	var invitesUsernames []string
-	var huddles []Huddle
-	var huddleIds []int
-	var huddlesUsernames []string
-
-	if err := db.
-		Table("invites").
-		Where("(sender = ? OR receiver = ?) AND accepted = 1", username, username).
-		Find(&invites).Error; err != nil {
-		return huddlesData, err
-	}
-
-	var hiddenUsernames []string
-	if err := db.
-		Table("hides").
-		Select("user").
-		Where("hidden = ?", username).
-		Find(&hiddenUsernames).
-		Error; err != nil {
-		return nil, err
-	}
-
-	var mutedUsernames []string
-	if err := db.
-		Table("muted_huddles").
-		Select("muted").
-		Where("user = ?", username).
-		Find(&mutedUsernames).
-		Error; err != nil {
-		return nil, err
-	}
-
-	invitesUsernames = GetUsernamesFromInvites(invites, hiddenUsernames, mutedUsernames, username)
-
-	// Two days ago in unix time
-	t := time.Now().AddDate(0, 0, -2).Unix()
-
-	var idCondition string
-	if lastId != "" {
-		idCondition = fmt.Sprintf("id < %s AND ", lastId)
-	}
-	if err := db.
-		Table("huddles").
-		Where(idCondition+"(created_by IN ? OR created_by = ?) AND created > ?",
-			invitesUsernames, username, t).
-		Order("created DESC").
-		Limit(10).
-		Find(&huddles).
-		Error; err != nil {
-		return huddlesData, err
-	}
-
-	if len(huddles) < 1 {
-		return huddlesData, nil
-	}
-
-	huddleIds = GetIdsFromHuddlesArray(huddles)
-
-	var interactedHuddlesIds []int
-	if err := db.
-		Table("huddles_interacted").
-		Select("huddle_id").
-		Where("sender = ? AND huddle_id IN ?", username, huddleIds).
-		Find(&interactedHuddlesIds).Error; err != nil {
-		return huddlesData, err
-	}
-
-	huddlesUsernames = GetUsernamesFromHuddles(huddles)
-
-	var profiles []p.Person
-	if err := db.
-		Table("users").
-		Where("username IN ?", huddlesUsernames).
-		Find(&profiles).
-		Error; err != nil {
-		return huddlesData, err
-	}
-
-	var comments []HuddleComment
-	if err := db.
-		Table("huddles_comments").
-		Where("huddle_id IN ?", huddleIds).
-		Find(&comments).
-		Error; err != nil {
-		return huddlesData, err
-	}
-
-	for _, huddle := range huddles {
-		profileInfo := GetProfileInfoFromProfiles(profiles, huddle.CreatedBy)
-		interacted := GetInteraction(interactedHuddlesIds, int(huddle.Id))
-		commentsNumber := getCommentsNumber(comments, int(huddle.Id))
-
-		huddlesData = append(huddlesData, HuddleData{
-			Id:             int(huddle.Id),
-			CreatedBy:      huddle.CreatedBy,
-			Name:           profileInfo.Firstname,
-			ProfilePhoto:   profileInfo.ProfilePhoto,
-			Topic:          huddle.Topic,
-			Color:          huddle.Color,
-			Interacted:     interacted,
-			CommentsNumber: commentsNumber,
-		})
-
-	}
-
-	return huddlesData, nil
-}
-
-// Update Huddle in huddles table
-func UpdateHuddle(db *gorm.DB, t *Update) error {
-	update := map[string]interface{}{
-		"topic": t.Topic,
-	}
-
-	return db.Table("huddles").Where("id = ?", t.Id).Updates(update).Error
 }
 
 // Get Huddle from huddles table by id
@@ -325,9 +197,8 @@ func GetHuddleById(db *gorm.DB, id string, username string) (HuddleData, error) 
 		Id:           int(huddle.Id),
 		CreatedBy:    huddle.CreatedBy,
 		Name:         profile.Firstname,
-		Color:        huddle.Color,
 		ProfilePhoto: profile.ProfilePhoto,
-		Topic:        huddle.Topic,
+		Message:      huddle.Message,
 		Interacted:   interacted,
 	}
 
@@ -364,30 +235,6 @@ func GetNewHuddleUsernamesFromInvites(
 		}
 
 		if !p.IsPersonHidden(hiddenUsernames, user) {
-			usernames = append(usernames, user)
-		}
-	}
-	return usernames
-}
-
-// Get usernames from invites array
-func GetUsernamesFromInvites(
-	invites []Invite,
-	hiddenUsernames []string,
-	mutedUsernames []string,
-	username string,
-) []string {
-	var usernames []string
-	for _, invite := range invites {
-		var user string
-
-		if invite.Sender == username {
-			user = invite.Receiver
-		} else {
-			user = invite.Sender
-		}
-
-		if !p.IsPersonHidden(hiddenUsernames, user) && !p.IsPersonMuted(mutedUsernames, user) {
 			usernames = append(usernames, user)
 		}
 	}

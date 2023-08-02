@@ -61,7 +61,6 @@ type Huddle struct {
 	Name           string  `json:"name"`
 	ProfilePhoto   *string `json:"profilePhoto,omitempty"`
 	Message        string  `json:"message"`
-	Color          int     `json:"color"`
 	Liked          int     `json:"liked"`
 	CommentsNumber int     `json:"commentsNumber"`
 }
@@ -286,15 +285,14 @@ func GetConversation(db *gorm.DB, conversationId string, lastId string) ([]Messa
 			Sender:       huddle.CreatedBy,
 			Name:         name,
 			ProfilePhoto: profilePhoto,
-			Message:      huddle.Topic,
-			Color:        huddle.Color,
+			Message:      huddle.Message,
 			Liked:        liked,
 		}
 
 		messagesData = append(messagesData, MessageData{
 			Id:      huddle.Id,
 			Sender:  huddle.CreatedBy,
-			Message: huddle.Topic,
+			Message: huddle.Message,
 			Time:    huddle.Created,
 			Huddle:  h,
 		})

@@ -60,59 +60,6 @@ func GetUserHuddles(c *fiber.Ctx) error {
 	})
 }
 
-// GetHuddles GET /huddles/:lastId?
-func GetHuddles(c *fiber.Ctx) error {
-	username, err := middleware.Authorize(c)
-	if err != nil {
-		return err
-	}
-	lastId := c.Params("lastId")
-
-	huddleData, getErr := huddles.GetHuddles(database.DB, username, lastId)
-
-	if getErr != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: getErr.Error(),
-		})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(GetHuddlesResponse{
-		Status:  "success",
-		Message: "Huddles successfully got",
-		Data:    huddleData,
-	})
-}
-
-// UpdateHuddle PUT /huddle
-func UpdateHuddle(c *fiber.Ctx) error {
-	_, err := middleware.Authorize(c)
-	if err != nil {
-		return err
-	}
-
-	t := &huddles.Update{}
-
-	if err := c.BodyParser(t); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	if err := huddles.UpdateHuddle(database.DB, t); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(Response{
-			Status:  "error",
-			Message: err.Error(),
-		})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(Response{
-		Status:  "success",
-		Message: "Huddle successfully updated",
-	})
-}
-
 // GetHuddleById GET /huddle/:id
 func GetHuddleById(c *fiber.Ctx) error {
 	username, err := middleware.Authorize(c)
