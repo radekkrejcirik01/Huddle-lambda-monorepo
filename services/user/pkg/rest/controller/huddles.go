@@ -60,15 +60,15 @@ func GetUserHuddles(c *fiber.Ctx) error {
 	})
 }
 
-// GetHuddleById GET /huddle/:id
-func GetHuddleById(c *fiber.Ctx) error {
+// GetHuddle GET /huddle/:id
+func GetHuddle(c *fiber.Ctx) error {
 	username, err := middleware.Authorize(c)
 	if err != nil {
 		return err
 	}
 	id := c.Params("id")
 
-	huddle, err := huddles.GetHuddleById(database.DB, id, username)
+	huddle, err := huddles.GetHuddle(database.DB, id, username)
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{

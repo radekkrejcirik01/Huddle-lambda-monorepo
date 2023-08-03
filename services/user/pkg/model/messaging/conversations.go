@@ -50,7 +50,7 @@ type LastMessage struct {
 	Url            string
 }
 
-// Create conversation in conversations table
+// CreateConversation in conversations table
 func CreateConversation(db *gorm.DB, t *Create) (uint, error) {
 	conversation := Conversation{}
 
@@ -141,7 +141,7 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 
 	if err := db.
 		Table("last_seen_messages").
-		Where("conversation_id IN ? AND username != ?", conversationsIds, username).
+		Where("conversation_id IN ?", conversationsIds).
 		Find(&lastSeenMessages).
 		Error; err != nil {
 		return nil, err
@@ -314,7 +314,9 @@ func getIsNewMessage(lastSeenMessages []LastSeenMessage, lastMessage LastMessage
 	}
 
 	for _, lastSeenMessage := range lastSeenMessages {
-		if lastSeenMessage.MessageId == int(lastMessage.Id) && lastSeenMessage.Username == username {
+		if lastSeenMessage.ConversationId == lastMessage.ConversationId &&
+			lastSeenMessage.MessageId == int(lastMessage.Id) &&
+			lastSeenMessage.Username == username {
 			return 0
 		}
 	}
@@ -328,7 +330,8 @@ func getIsSeen(lastSeenMessages []LastSeenMessage, lastMessage LastMessage, user
 
 	for _, lastSeenMessage := range lastSeenMessages {
 		if lastSeenMessage.ConversationId == lastMessage.ConversationId &&
-			lastSeenMessage.MessageId == int(lastMessage.Id) {
+			lastSeenMessage.MessageId == int(lastMessage.Id) &&
+			lastSeenMessage.Username != username {
 			return 1
 		}
 	}

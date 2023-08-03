@@ -227,10 +227,16 @@ func GetConversation(db *gorm.DB, conversationId string, username string, lastId
 	}
 
 	lastMessageTime := messages[len(messages)-1].Time
+	firstMessageTime := messages[0].Time
+
+	var timeCondition string
+	if lastId != "" {
+		timeCondition = fmt.Sprintf(" AND created <= %d", firstMessageTime)
+	}
 
 	if err := db.
 		Table("huddles").
-		Where("created_by IN ? AND created >= ?", peopleInConversations, lastMessageTime).
+		Where("created_by IN ? AND created >= ?"+timeCondition, peopleInConversations, lastMessageTime).
 		Find(&huddles).
 		Error; err != nil {
 		return nil, err
@@ -318,44 +324,16 @@ func GetConversation(db *gorm.DB, conversationId string, username string, lastId
 	return messagesData, nil
 }
 
-func getCommentsNumber(huddlesComments []H.HuddleComment, huddleId int) int {
-	var count int
-	for _, huddlesComment := range huddlesComments {
-		if huddlesComment.HuddleId == huddleId {
-			count += 1
-		}
-	}
-
-	return count
-}
-
-func getLikesNumber(likedHuddles []H.HuddleLike, huddleId int) int {
-	var count int
-	for _, likedHuddle := range likedHuddles {
-		if likedHuddle.HuddleId == huddleId {
-			count += 1
-		}
-	}
-
-	return count
-}
-
-func isHuddleLiked(likedHuddles []H.HuddleLike, username string, huddleId int) int {
-	for _, likedHuddle := range likedHuddles {
-		if likedHuddle.HuddleId == huddleId && likedHuddle.Sender == username {
-			return 1
-		}
-	}
-
-	return 0
-}
-
 // GetMessagesByUsernames and reactions from messages table
 func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]MessageData, uint, error) {
+	var conversationId int
 	var messages []Message
+	var huddles []H.Huddle
+	var huddleIds []int
+	var huddleComments []H.HuddleComment
+	var huddleLikes []H.HuddleLike
 	var messagesReactions []Reaction
 	var messagesData []MessageData
-	var conversationId int
 	var lastSeenMessages []LastSeenMessage
 
 	// Get conversation id by 2 usernames
@@ -399,6 +377,32 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 		return nil, uint(conversationId), nil
 	}
 
+	lastMessageTime := messages[len(messages)-1].Time
+
+	if err := db.
+		Table("huddles").
+		Where("created_by IN ? AND created >= ?", []string{username, user}, lastMessageTime).
+		Find(&huddles).
+		Error; err != nil {
+		return nil, 0, err
+	}
+
+	huddleIds = H.GetIdsFromHuddlesArray(huddles)
+
+	if err := db.
+		Table("huddles_likes").
+		Where("huddle_id IN ?", huddleIds).
+		Find(&huddleLikes).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := db.
+		Table("huddles_comments").
+		Where("huddle_id IN ?", huddleIds).
+		Find(&huddleComments).Error; err != nil {
+		return nil, 0, err
+	}
+
 	messagesIds := getMessagesIds(messages)
 
 	if err := db.
@@ -417,6 +421,16 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 		return nil, 0, err
 	}
 
+	var userDetails []UserDetails
+	if err := db.
+		Table("users").
+		Select("username, firstname, profile_photo").
+		Where("username IN ?", []string{username, user}).
+		Find(&userDetails).
+		Error; err != nil {
+		return nil, 0, err
+	}
+
 	for _, message := range messages {
 		reactions := getReactions(message.Id, messagesReactions)
 		readBy := getReadBy(lastSeenMessages, message.Id, message.Sender)
@@ -431,6 +445,36 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 			ReadBy:    readBy,
 		})
 	}
+
+	for _, huddle := range huddles {
+		name, profilePhoto := getUserDetails(huddle.CreatedBy, userDetails)
+		commentsNumber := getCommentsNumber(huddleComments, int(huddle.Id))
+		likesNumber := getLikesNumber(huddleLikes, int(huddle.Id))
+		liked := isHuddleLiked(huddleLikes, username, int(huddle.Id))
+
+		h := &Huddle{
+			Id:             int(huddle.Id),
+			Sender:         huddle.CreatedBy,
+			Name:           name,
+			ProfilePhoto:   profilePhoto,
+			Message:        huddle.Message,
+			CommentsNumber: commentsNumber,
+			LikesNumber:    likesNumber,
+			Liked:          liked,
+		}
+
+		messagesData = append(messagesData, MessageData{
+			Id:      huddle.Id,
+			Sender:  huddle.CreatedBy,
+			Message: huddle.Message,
+			Time:    huddle.Created,
+			Huddle:  h,
+		})
+	}
+
+	sort.Slice(messagesData, func(i, y int) bool {
+		return messagesData[i].Time > messagesData[y].Time
+	})
 
 	return messagesData, uint(conversationId), nil
 }
@@ -524,4 +568,36 @@ func getUserDetails(username string, userDetails []UserDetails) (string, *string
 	}
 
 	return name, profilePhoto
+}
+
+func getCommentsNumber(huddlesComments []H.HuddleComment, huddleId int) int {
+	var count int
+	for _, huddlesComment := range huddlesComments {
+		if huddlesComment.HuddleId == huddleId {
+			count += 1
+		}
+	}
+
+	return count
+}
+
+func getLikesNumber(likedHuddles []H.HuddleLike, huddleId int) int {
+	var count int
+	for _, likedHuddle := range likedHuddles {
+		if likedHuddle.HuddleId == huddleId {
+			count += 1
+		}
+	}
+
+	return count
+}
+
+func isHuddleLiked(likedHuddles []H.HuddleLike, username string, huddleId int) int {
+	for _, likedHuddle := range likedHuddles {
+		if likedHuddle.HuddleId == huddleId && likedHuddle.Sender == username {
+			return 1
+		}
+	}
+
+	return 0
 }

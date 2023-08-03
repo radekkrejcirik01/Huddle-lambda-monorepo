@@ -15,7 +15,7 @@ func Create() *fiber.App {
 	app.Get("/unseen-invites", controller.GetUnseenInvites)
 	app.Get("/hidden-people/:lastId?", controller.GetHiddenPeople)
 	app.Get("/user-huddles/:lastId?", controller.GetUserHuddles)
-	app.Get("/huddle/:id", controller.GetHuddleById)
+	app.Get("/huddle/:id", controller.GetHuddle)
 	app.Get("/huddle-likes/:huddleId", controller.GetHuddleLikes)
 	app.Get("/comments/:huddleId/:lastId?", controller.GetHuddleComments)
 	app.Get("/comment-likes/:commentId/:lastId?", controller.GetCommentLikes)

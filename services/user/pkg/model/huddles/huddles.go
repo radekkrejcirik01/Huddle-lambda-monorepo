@@ -1,7 +1,6 @@
 package huddles
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
@@ -34,7 +33,8 @@ type HuddleData struct {
 	ProfilePhoto   string `json:"profilePhoto"`
 	Message        string `json:"message"`
 	Liked          int    `json:"liked,omitempty"`
-	CommentsNumber int    `json:"commentsNumber,omitempty"`
+	CommentsNumber int    `json:"commentsNumber"`
+	LikesNumber    int    `json:"likesNumber"`
 }
 
 type Invite struct {
@@ -101,6 +101,52 @@ func CreateHuddle(db *gorm.DB, username string, t *NewHuddle) error {
 	return service.SendNotification(&hangoutNotification)
 }
 
+// GetHuddle from huddles table
+func GetHuddle(db *gorm.DB, huddleId string, username string) (HuddleData, error) {
+	var huddle Huddle
+	var user p.Person
+	var huddleComments []HuddleComment
+	var huddleLikes []HuddleLike
+
+	if err := db.Table("huddles").Where("id = ?", huddleId).First(&huddle).Error; err != nil {
+		return HuddleData{}, err
+	}
+
+	if err := db.
+		Table("users").
+		Select("firstname, profile_photo").
+		Where("username = ?", huddle.CreatedBy).
+		First(&user).
+		Error; err != nil {
+		return HuddleData{}, err
+	}
+
+	if err := db.
+		Table("huddles_likes").
+		Where("huddle_id = ?", huddle.Id).
+		Find(&huddleLikes).Error; err != nil {
+		return HuddleData{}, err
+	}
+
+	if err := db.
+		Table("huddles_comments").
+		Where("huddle_id = ?", huddle.Id).
+		Find(&huddleComments).Error; err != nil {
+		return HuddleData{}, err
+	}
+
+	return HuddleData{
+		Id:             int(huddle.Id),
+		CreatedBy:      huddle.CreatedBy,
+		Message:        huddle.Message,
+		Name:           user.Firstname,
+		ProfilePhoto:   user.ProfilePhoto,
+		CommentsNumber: len(huddleComments),
+		LikesNumber:    len(huddleLikes),
+		Liked:          isHuddleLiked(huddleLikes, username, int(huddle.Id)),
+	}, nil
+}
+
 // GetUserHuddles from huddles table
 func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, error) {
 	var huddlesData []HuddleData
@@ -148,59 +194,7 @@ func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, 
 	return huddlesData, nil
 }
 
-// Get Huddle from huddles table by id
-func GetHuddleById(db *gorm.DB, id string, username string) (HuddleData, error) {
-	var huddleData HuddleData
-	var liked int
-
-	var huddle Huddle
-	if err := db.
-		Table("huddles").
-		Where("id = ?", id).
-		First(&huddle).Error; err != nil {
-		return HuddleData{}, err
-	}
-
-	var profile p.Person
-	if err := db.
-		Table("users").
-		Where("username = ?", huddle.CreatedBy).
-		First(&profile).
-		Error; err != nil {
-		return HuddleData{}, err
-	}
-
-	if huddle.CreatedBy != username {
-		var huddleLike HuddleLike
-
-		err := db.
-			Table("huddles_likes").
-			Where("sender = ? AND huddle_id = ?", username, id).
-			First(&huddleLike).
-			Error
-
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return HuddleData{}, err
-		}
-
-		if err == nil {
-			liked = 1
-		}
-	}
-
-	huddleData = HuddleData{
-		Id:           int(huddle.Id),
-		CreatedBy:    huddle.CreatedBy,
-		Name:         profile.Firstname,
-		ProfilePhoto: profile.ProfilePhoto,
-		Message:      huddle.Message,
-		Liked:        liked,
-	}
-
-	return huddleData, nil
-}
-
-// Delete huddle from huddles table
+// DeleteHuddle from huddles table
 func DeleteHuddle(db *gorm.DB, id string) error {
 	if err := db.Table("huddles").Where("id = ?", id).Delete(&Huddle{}).Error; err != nil {
 		return err
@@ -213,7 +207,7 @@ func DeleteHuddle(db *gorm.DB, id string) error {
 	return nil
 }
 
-// Get new huddles usernames from invites array
+// GetNewHuddleUsernamesFromInvites from invites array
 func GetNewHuddleUsernamesFromInvites(
 	invites []Invite,
 	hiddenUsernames []string,
@@ -281,4 +275,14 @@ func GetProfileInfoFromProfiles(profiles []people.Person, username string) p.Per
 	}
 
 	return person
+}
+
+func isHuddleLiked(likedHuddles []HuddleLike, username string, huddleId int) int {
+	for _, likedHuddle := range likedHuddles {
+		if likedHuddle.HuddleId == huddleId && likedHuddle.Sender == username {
+			return 1
+		}
+	}
+
+	return 0
 }
