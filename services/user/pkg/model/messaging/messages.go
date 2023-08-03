@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	H "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/huddles"
 	"sort"
+
+	H "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/huddles"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -175,7 +176,7 @@ func SendMessage(db *gorm.DB, username string, t *Send) error {
 }
 
 // GetConversation messages and reactions from messages table
-func GetConversation(db *gorm.DB, conversationId string, lastId string) ([]MessageData, error) {
+func GetConversation(db *gorm.DB, conversationId string, username string, lastId string) ([]MessageData, error) {
 	var messages []Message
 	var peopleInConversations []string
 	var huddles []H.Huddle
@@ -238,7 +239,7 @@ func GetConversation(db *gorm.DB, conversationId string, lastId string) ([]Messa
 	if err := db.
 		Table("huddles_interacted").
 		Select("huddle_id").
-		Where("huddle_id IN ?", huddleIds).
+		Where("sender = ? AND huddle_id IN ?", username, huddleIds).
 		Find(&likedHuddlesIds).Error; err != nil {
 		return nil, err
 	}

@@ -27,9 +27,10 @@ type Person struct {
 	ProfilePhoto string `json:"profilePhoto"`
 }
 
-type InviteResponseData struct {
-	Id   int    `json:"id"`
-	User Person `json:"user"`
+type PeopleData struct {
+	Id       int    `json:"id"`
+	User     Person `json:"user"`
+	Accepted int    `json:"accepted"`
 }
 
 // AddPersonInvite in invites table
@@ -116,9 +117,9 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 }
 
 // Get people from invites table
-func GetPeople(db *gorm.DB, username string, lastId string) ([]Person, error) {
+func GetPeople(db *gorm.DB, username string, lastId string) ([]PeopleData, error) {
 	var invites []Invite
-	var people []Person
+	var people []PeopleData
 
 	var idCondition string
 	if lastId != "" {
@@ -126,8 +127,8 @@ func GetPeople(db *gorm.DB, username string, lastId string) ([]Person, error) {
 	}
 	if err := db.
 		Table("invites").
-		Where(idCondition+"(sender = ? OR receiver = ?) AND accepted = 1",
-			username, username).
+		Where(idCondition+"((sender = ? OR receiver = ?) AND accepted = 1) OR (receiver = ? AND accepted = 0)",
+			username, username, username).
 		Order("id DESC").
 		Limit(20).
 		Find(&invites).Error; err != nil {
@@ -146,57 +147,17 @@ func GetPeople(db *gorm.DB, username string, lastId string) ([]Person, error) {
 	}
 
 	// Reorder people by invites
-	for i, username := range usernames {
-		person := getPersonByUsername(profiles, username)
-		person.Id = i + 1
+	for _, username := range usernames {
+		var person PeopleData
+
+		person.Id = getInviteId(invites, username)
+		person.User = getPersonByUsername(profiles, username)
+		person.Accepted = isInviteAccepted(invites, username)
 
 		people = append(people, person)
 	}
 
 	return people, nil
-}
-
-// Get invites from invites table
-func GetInvites(db *gorm.DB, username string, lastId string) ([]InviteResponseData, error) {
-	var invites []Invite
-	var profiles []Person
-	var invitesResponse []InviteResponseData
-
-	var idCondition string
-	if lastId != "" {
-		idCondition = fmt.Sprintf("id < %s AND ", lastId)
-	}
-
-	if err := db.
-		Table("invites").
-		Where(idCondition+"receiver = ? AND accepted = 0", username).
-		Order("id DESC").
-		Limit(20).
-		Find(&invites).
-		Error; err != nil {
-		return nil, err
-	}
-
-	senders := getSenders(invites)
-
-	if err := db.
-		Table("users").
-		Select("username, profile_photo").
-		Where("username IN ?", senders).
-		Find(&profiles).
-		Error; err != nil {
-		return nil, err
-	}
-
-	for _, invite := range invites {
-		user := getUser(profiles, invite.Sender)
-		invitesResponse = append(invitesResponse, InviteResponseData{
-			Id:   int(invite.Id),
-			User: user,
-		})
-	}
-
-	return invitesResponse, nil
 }
 
 // Update accepted column in invites table to 1
@@ -281,23 +242,22 @@ func getPersonByUsername(profiles []Person, username string) Person {
 	return person
 }
 
-// Get senders from invites
-func getSenders(invites []Invite) []string {
-	var senders []string
+func getInviteId(invites []Invite, username string) int {
 	for _, invite := range invites {
-		senders = append(senders, invite.Sender)
-	}
-	return senders
-}
-
-// Get senders from invites
-func getUser(profiles []Person, username string) Person {
-	var profile Person
-	for _, p := range profiles {
-		if p.Username == username {
-			profile = p
-			break
+		if invite.Sender == username || invite.Receiver == username {
+			return int(invite.Id)
 		}
 	}
-	return profile
+
+	return 0
+}
+
+func isInviteAccepted(invites []Invite, username string) int {
+	for _, invite := range invites {
+		if invite.Sender == username || invite.Receiver == username {
+			return invite.Accepted
+		}
+	}
+
+	return 0
 }

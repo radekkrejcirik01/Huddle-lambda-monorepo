@@ -62,14 +62,19 @@ func SendMessage(c *fiber.Ctx) error {
 
 // GetConversation GET /conversation/:conversationId/:lastId?
 func GetConversation(c *fiber.Ctx) error {
-	_, err := middleware.Authorize(c)
+	username, err := middleware.Authorize(c)
 	if err != nil {
 		return err
 	}
 	conversationId := c.Params("conversationId")
 	lastId := c.Params("lastId")
 
-	messages, getErr := messaging.GetConversation(database.DB, conversationId, lastId)
+	messages, getErr := messaging.GetConversation(
+		database.DB,
+		conversationId,
+		username,
+		lastId,
+	)
 
 	if getErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{

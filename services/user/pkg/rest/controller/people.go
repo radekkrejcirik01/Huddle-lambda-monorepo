@@ -136,30 +136,6 @@ func UpdateSeenInvites(c *fiber.Ctx) error {
 	})
 }
 
-// GetInvites GET /invites/:lastId?
-func GetInvites(c *fiber.Ctx) error {
-	username, err := middleware.Authorize(c)
-	if err != nil {
-		return err
-	}
-	lastId := c.Params("lastId")
-
-	invites, getErr := people.GetInvites(database.DB, username, lastId)
-
-	if getErr != nil {
-		return c.Status(fiber.StatusOK).JSON(Response{
-			Status:  "error",
-			Message: "No record found",
-		})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(GetInvitesResponse{
-		Status:  "success",
-		Message: "Invites successfully got",
-		Data:    invites,
-	})
-}
-
 // GetHiddenPeople GET /hidden-people/:lastId?
 func GetHiddenPeople(c *fiber.Ctx) error {
 	username, err := middleware.Authorize(c)
