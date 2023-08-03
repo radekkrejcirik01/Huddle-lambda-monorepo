@@ -5,36 +5,36 @@ import (
 	"gorm.io/gorm"
 )
 
-type HuddleInteracted struct {
+type HuddleLike struct {
 	Id       uint `gorm:"primary_key;auto_increment;not_null"`
 	Sender   string
 	HuddleId int
 	Created  int64 `gorm:"autoCreateTime"`
 }
 
-func (HuddleInteracted) TableName() string {
-	return "huddles_interacted"
+func (HuddleLike) TableName() string {
+	return "huddles_likes"
 }
 
-type Interact struct {
+type Like struct {
 	HuddleId int
 	Message  string
 	Receiver string
 }
 
-type UserInteracted struct {
+type UserLike struct {
 	Username     string `json:"username"`
 	Firstname    string `json:"name"`
 	ProfilePhoto string `json:"profilePhoto"`
 }
 
-// HuddleInteract to huddles_interacted table
-func HuddleInteract(db *gorm.DB, username string, t *Interact) error {
-	interaction := HuddleInteracted{
+// LikeHuddle to huddles_likes table
+func LikeHuddle(db *gorm.DB, username string, t *Like) error {
+	like := HuddleLike{
 		Sender:   username,
 		HuddleId: t.HuddleId,
 	}
-	if err := db.Table("huddles_interacted").Create(&interaction).Error; err != nil {
+	if err := db.Table("huddles_likes").Create(&like).Error; err != nil {
 		return err
 	}
 
@@ -42,17 +42,17 @@ func HuddleInteract(db *gorm.DB, username string, t *Interact) error {
 		return nil
 	}
 
-	var interactionsNotifications int
+	var likesNotifications int
 	if err := db.
 		Table("users").
-		Select("interactions_notifications").
+		Select("huddle_likes_notifications").
 		Where("username = ?", t.Receiver).
-		Find(&interactionsNotifications).
+		Find(&likesNotifications).
 		Error; err != nil {
 		return err
 	}
 
-	if interactionsNotifications != 1 {
+	if likesNotifications != 1 {
 		return nil
 	}
 
@@ -85,36 +85,36 @@ func HuddleInteract(db *gorm.DB, username string, t *Interact) error {
 	return service.SendNotification(&fcmNotification)
 }
 
-// GetHuddleInteractions from huddles_interacted table
-func GetHuddleInteractions(db *gorm.DB, huddleId string) ([]UserInteracted, error) {
-	var usersInteracted []UserInteracted
+// GetHuddleLikes from huddles_likes table
+func GetHuddleLikes(db *gorm.DB, huddleId string) ([]UserLike, error) {
+	var usersLiked []UserLike
 
-	var interactions []string
+	var likes []string
 	if err := db.
-		Table("huddles_interacted").
+		Table("huddles_likes").
 		Select("sender").
 		Where("huddle_id = ?", huddleId).
-		Find(&interactions).
+		Find(&likes).
 		Error; err != nil {
-		return usersInteracted, err
+		return usersLiked, err
 	}
 
 	if err := db.
 		Table("users").
-		Where("username IN ?", interactions).
-		Find(&usersInteracted).
+		Where("username IN ?", likes).
+		Find(&usersLiked).
 		Error; err != nil {
-		return usersInteracted, err
+		return usersLiked, err
 	}
 
-	return usersInteracted, nil
+	return usersLiked, nil
 }
 
-// RemoveHuddleInteraction from huddles_interacted table
-func RemoveHuddleInteraction(db *gorm.DB, username string, huddleId string) error {
+// RemoveHuddleLike from huddles_likes table
+func RemoveHuddleLike(db *gorm.DB, username string, huddleId string) error {
 	return db.
-		Table("huddles_interacted").
+		Table("huddles_likes").
 		Where("sender = ? AND huddle_id = ?", username, huddleId).
-		Delete(&HuddleInteracted{}).
+		Delete(&HuddleLike{}).
 		Error
 }

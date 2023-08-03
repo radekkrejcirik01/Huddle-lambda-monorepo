@@ -183,7 +183,7 @@ func GetConversation(db *gorm.DB, conversationId string, username string, lastId
 	var huddles []H.Huddle
 	var huddleIds []int
 	var huddleComments []H.HuddleComment
-	var huddleLikes []H.HuddleInteracted
+	var huddleLikes []H.HuddleLike
 	var messagesReactions []Reaction
 	var messagesData []MessageData
 	var lastSeenMessages []LastSeenMessage
@@ -239,7 +239,7 @@ func GetConversation(db *gorm.DB, conversationId string, username string, lastId
 	huddleIds = H.GetIdsFromHuddlesArray(huddles)
 
 	if err := db.
-		Table("huddles_interacted").
+		Table("huddles_likes").
 		Where("huddle_id IN ?", huddleIds).
 		Find(&huddleLikes).Error; err != nil {
 		return nil, err
@@ -329,7 +329,7 @@ func getCommentsNumber(huddlesComments []H.HuddleComment, huddleId int) int {
 	return count
 }
 
-func getLikesNumber(likedHuddles []H.HuddleInteracted, huddleId int) int {
+func getLikesNumber(likedHuddles []H.HuddleLike, huddleId int) int {
 	var count int
 	for _, likedHuddle := range likedHuddles {
 		if likedHuddle.HuddleId == huddleId {
@@ -340,7 +340,7 @@ func getLikesNumber(likedHuddles []H.HuddleInteracted, huddleId int) int {
 	return count
 }
 
-func isHuddleLiked(likedHuddles []H.HuddleInteracted, username string, huddleId int) int {
+func isHuddleLiked(likedHuddles []H.HuddleLike, username string, huddleId int) int {
 	for _, likedHuddle := range likedHuddles {
 		if likedHuddle.HuddleId == huddleId && likedHuddle.Sender == username {
 			return 1

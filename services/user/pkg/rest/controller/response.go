@@ -79,10 +79,10 @@ type GetHuddleResponse struct {
 	Data    huddles.HuddleData `json:"data,omitempty"`
 }
 
-type GetHuddleInteractionsResponse struct {
-	Status  string                   `json:"status"`
-	Message string                   `json:"message,omitempty"`
-	Data    []huddles.UserInteracted `json:"data,omitempty"`
+type GetHuddleLikesResponse struct {
+	Status  string             `json:"status"`
+	Message string             `json:"message,omitempty"`
+	Data    []huddles.UserLike `json:"data,omitempty"`
 }
 
 type GetHuddleCommentsResponse struct {

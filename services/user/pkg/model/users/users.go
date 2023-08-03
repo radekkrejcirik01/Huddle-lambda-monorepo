@@ -24,7 +24,7 @@ type User struct {
 	ProfilePhoto                string `json:"profilePhoto"`
 	FriendsInvitesNotifications int    `gorm:"default:1"`
 	NewHuddlesNotifications     int    `gorm:"default:1"`
-	InteractionsNotifications   int    `gorm:"default:1"`
+	HuddleLikesNotifications    int    `gorm:"default:1"`
 	CommentsNotifications       int    `gorm:"default:1"`
 	MentionsNotifications       int    `gorm:"default:1"`
 	MessagesNotifications       int    `gorm:"default:1"`
@@ -49,7 +49,7 @@ type UserData struct {
 type Notification struct {
 	FriendsInvitesNotifications int `json:"friendsInvitesNotifications"`
 	NewHuddlesNotifications     int `json:"newHuddlesNotifications"`
-	InteractionsNotifications   int `json:"interactionsNotifications"`
+	HuddleLikesNotifications    int `json:"huddleLikesNotifications"`
 	CommentsNotifications       int `json:"commentsNotifications"`
 	MentionsNotifications       int `json:"mentionsNotifications"`
 	MessagesNotifications       int `json:"messagesNotifications"`
@@ -122,7 +122,7 @@ func GetUserNotifications(db *gorm.DB, username string) (Notification, error) {
 		Select(`
 			friends_invites_notifications,
 			new_huddles_notifications,
-			interactions_notifications,
+			huddle_likes_notifications,
 			comments_notifications,
 			mentions_notifications,
 			messages_notifications`).
@@ -230,9 +230,9 @@ func DeleteAccount(db *gorm.DB, username string) error {
 	}
 
 	if err := db.
-		Table("huddles_interacted").
+		Table("huddles_likes").
 		Where("sender = ?", username).
-		Delete(&huddles.HuddleInteracted{}).
+		Delete(&huddles.HuddleLike{}).
 		Error; err != nil {
 		return err
 	}

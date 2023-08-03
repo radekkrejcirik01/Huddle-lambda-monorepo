@@ -19,7 +19,7 @@ func (HuddleCommentLike) TableName() string {
 	return "huddles_comments_likes"
 }
 
-type Like struct {
+type CommentLike struct {
 	Receiver  string
 	CommentId int
 	HuddleId  int
@@ -32,7 +32,7 @@ type Liker struct {
 }
 
 // LikeHuddleComment in huddles_comments_likes table
-func LikeHuddleComment(db *gorm.DB, username string, t *Like) error {
+func LikeHuddleComment(db *gorm.DB, username string, t *CommentLike) error {
 	var name string
 
 	like := HuddleCommentLike{
@@ -76,7 +76,7 @@ func LikeHuddleComment(db *gorm.DB, username string, t *Like) error {
 	return service.SendNotification(&fcmNotification)
 }
 
-// Get Huddle comment likes from huddles_comments_likes table
+// GetCommentLikes from huddles_comments_likes table
 func GetCommentLikes(db *gorm.DB, commentId string, lastId string) ([]Liker, error) {
 	var likes []HuddleCommentLike
 	var likers []Liker

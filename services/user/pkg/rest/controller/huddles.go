@@ -105,14 +105,14 @@ func DeleteHuddle(c *fiber.Ctx) error {
 	})
 }
 
-// HuddleInteract POST /huddle/interaction
-func HuddleInteract(c *fiber.Ctx) error {
+// LikeHuddle POST /huddle/like
+func LikeHuddle(c *fiber.Ctx) error {
 	username, err := middleware.Authorize(c)
 	if err != nil {
 		return err
 	}
 
-	t := &huddles.Interact{}
+	t := &huddles.Like{}
 
 	if err := c.BodyParser(t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -121,7 +121,7 @@ func HuddleInteract(c *fiber.Ctx) error {
 		})
 	}
 
-	if err := huddles.HuddleInteract(database.DB, username, t); err != nil {
+	if err := huddles.LikeHuddle(database.DB, username, t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
 			Message: err.Error(),
@@ -130,19 +130,19 @@ func HuddleInteract(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(Response{
 		Status:  "success",
-		Message: "Huddle successfully interacted",
+		Message: "Huddle successfully liked",
 	})
 }
 
-// GetHuddleInteractions GET /interactions/:huddleId
-func GetHuddleInteractions(c *fiber.Ctx) error {
+// GetHuddleLikes GET /likes/:huddleId
+func GetHuddleLikes(c *fiber.Ctx) error {
 	_, err := middleware.Authorize(c)
 	if err != nil {
 		return err
 	}
 	huddleId := c.Params("huddleId")
 
-	huddleInteractions, getErr := huddles.GetHuddleInteractions(database.DB, huddleId)
+	huddleLikes, getErr := huddles.GetHuddleLikes(database.DB, huddleId)
 
 	if getErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -151,22 +151,22 @@ func GetHuddleInteractions(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(GetHuddleInteractionsResponse{
+	return c.Status(fiber.StatusOK).JSON(GetHuddleLikesResponse{
 		Status:  "success",
-		Message: "Huddle interactions successfully got",
-		Data:    huddleInteractions,
+		Message: "Huddle like successfully got",
+		Data:    huddleLikes,
 	})
 }
 
-// RemoveHuddleInteraction DELETE /interaction/:huddleId
-func RemoveHuddleInteraction(c *fiber.Ctx) error {
+// RemoveHuddleLike DELETE /like/:huddleId
+func RemoveHuddleLike(c *fiber.Ctx) error {
 	username, err := middleware.Authorize(c)
 	if err != nil {
 		return err
 	}
 	huddleId := c.Params("huddleId")
 
-	if err := huddles.RemoveHuddleInteraction(database.DB, username, huddleId); err != nil {
+	if err := huddles.RemoveHuddleLike(database.DB, username, huddleId); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
 			Message: err.Error(),
@@ -175,7 +175,7 @@ func RemoveHuddleInteraction(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(Response{
 		Status:  "success",
-		Message: "Huddle interaction removed",
+		Message: "Huddle likes removed",
 	})
 }
 
@@ -271,7 +271,7 @@ func LikeHuddleComment(c *fiber.Ctx) error {
 		return err
 	}
 
-	t := &huddles.Like{}
+	t := &huddles.CommentLike{}
 
 	if err := c.BodyParser(t); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{

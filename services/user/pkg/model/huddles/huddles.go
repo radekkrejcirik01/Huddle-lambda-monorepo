@@ -3,6 +3,7 @@ package huddles
 import (
 	"errors"
 	"fmt"
+
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
@@ -34,7 +35,7 @@ type HuddleData struct {
 	Name           string `json:"name"`
 	ProfilePhoto   string `json:"profilePhoto"`
 	Message        string `json:"message"`
-	Interacted     int    `json:"interacted,omitempty"`
+	Liked          int    `json:"liked,omitempty"`
 	CommentsNumber int    `json:"commentsNumber,omitempty"`
 }
 
@@ -134,9 +135,9 @@ func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, 
 	for _, huddle := range huddles {
 		profileInfo := GetProfileInfoFromProfiles(profiles, huddle.CreatedBy)
 
-		var interacted int
+		var liked int
 		if huddle.CreatedBy != username {
-			interacted = 1
+			liked = 1
 		}
 
 		huddlesData = append(huddlesData, HuddleData{
@@ -145,7 +146,7 @@ func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, 
 			Name:         profileInfo.Firstname,
 			ProfilePhoto: profileInfo.ProfilePhoto,
 			Message:      huddle.Message,
-			Interacted:   interacted,
+			Liked:        liked,
 		})
 
 	}
@@ -156,7 +157,7 @@ func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, 
 // Get Huddle from huddles table by id
 func GetHuddleById(db *gorm.DB, id string, username string) (HuddleData, error) {
 	var huddleData HuddleData
-	var interacted int
+	var liked int
 
 	var huddle Huddle
 	if err := db.
@@ -176,12 +177,12 @@ func GetHuddleById(db *gorm.DB, id string, username string) (HuddleData, error) 
 	}
 
 	if huddle.CreatedBy != username {
-		var interaction HuddleInteracted
+		var huddleLike HuddleLike
 
 		err := db.
-			Table("huddles_interacted").
+			Table("huddles_likes").
 			Where("sender = ? AND huddle_id = ?", username, id).
-			First(&interaction).
+			First(&huddleLike).
 			Error
 
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -189,7 +190,7 @@ func GetHuddleById(db *gorm.DB, id string, username string) (HuddleData, error) 
 		}
 
 		if err == nil {
-			interacted = 1
+			liked = 1
 		}
 	}
 
@@ -199,7 +200,7 @@ func GetHuddleById(db *gorm.DB, id string, username string) (HuddleData, error) 
 		Name:         profile.Firstname,
 		ProfilePhoto: profile.ProfilePhoto,
 		Message:      huddle.Message,
-		Interacted:   interacted,
+		Liked:        liked,
 	}
 
 	return huddleData, nil
@@ -211,7 +212,7 @@ func DeleteHuddle(db *gorm.DB, id string) error {
 		return err
 	}
 
-	if err := db.Table("huddles_interacted").Where("huddle_id = ?", id).Delete(&HuddleInteracted{}).Error; err != nil {
+	if err := db.Table("huddles_likes").Where("huddle_id = ?", id).Delete(&HuddleLike{}).Error; err != nil {
 		return err
 	}
 
@@ -275,7 +276,7 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-// Get profile info from profiles array
+// GetProfileInfoFromProfiles returns profile
 func GetProfileInfoFromProfiles(profiles []people.Person, username string) p.Person {
 	var person p.Person
 
@@ -286,28 +287,4 @@ func GetProfileInfoFromProfiles(profiles []people.Person, username string) p.Per
 	}
 
 	return person
-}
-
-// Get interaction value from interacted huddles ids and huddle id
-func GetInteraction(interactedHuddlesIds []int, huddleId int) int {
-	for _, id := range interactedHuddlesIds {
-		if id == huddleId {
-			return 1
-		}
-	}
-
-	return 0
-}
-
-// Get number of comments for Huddle
-func getCommentsNumber(comments []HuddleComment, huddleId int) int {
-	commentsNumber := 0
-
-	for _, comment := range comments {
-		if comment.HuddleId == huddleId {
-			commentsNumber = commentsNumber + 1
-		}
-	}
-
-	return commentsNumber
 }

@@ -27,7 +27,7 @@ func init() {
 		&people.MutedConversation{},
 		&people.MutedHuddle{},
 		&people.Blocked{},
-		&huddles.HuddleInteracted{},
+		&huddles.HuddleLike{},
 		&huddles.Huddle{},
 		&huddles.HuddleComment{},
 		&huddles.HuddleCommentLike{},
