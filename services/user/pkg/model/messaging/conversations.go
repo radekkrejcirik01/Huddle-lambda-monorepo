@@ -3,10 +3,11 @@ package messaging
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/huddles"
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"gorm.io/gorm"
-	"time"
 )
 
 type Conversation struct {
@@ -29,7 +30,7 @@ type Chat struct {
 	ProfilePhoto string `json:"profilePhoto,omitempty"`
 	LastMessage  string `json:"lastMessage,omitempty"`
 	IsNewMessage int    `json:"isNewMessage,omitempty"`
-	IsRead       int    `json:"isRead,omitempty"`
+	IsSeen       int    `json:"isSeen,omitempty"`
 	IsLiked      int    `json:"isLiked,omitempty"`
 	NewHuddles   int64  `json:"newHuddles,omitempty"`
 	Time         int64  `json:"time"`
@@ -140,7 +141,7 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 
 	if err := db.
 		Table("last_seen_messages").
-		Where("username = ? AND conversation_id IN ?", username, conversationsIds).
+		Where("conversation_id IN ? AND username != ?", conversationsIds, username).
 		Find(&lastSeenMessages).
 		Error; err != nil {
 		return nil, err
@@ -213,7 +214,7 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 		}
 
 		isNewMessage := getIsNewMessage(lastSeenMessages, lastMessage, username)
-		isRead := getIsRead(lastSeenMessages, lastMessage, username)
+		isSeen := getIsSeen(lastSeenMessages, lastMessage, username)
 		isLiked := getIsLiked(lastMessage, likedConversations)
 		newHuddles := getNewHuddlesCount(
 			createdHuddles,
@@ -229,7 +230,7 @@ func GetChats(db *gorm.DB, username string, lastId string) ([]Chat, error) {
 			ProfilePhoto: profilePhoto,
 			LastMessage:  message,
 			IsNewMessage: isNewMessage,
-			IsRead:       isRead,
+			IsSeen:       isSeen,
 			IsLiked:      isLiked,
 			NewHuddles:   newHuddles,
 			Time:         lastMessage.Time,
@@ -320,13 +321,14 @@ func getIsNewMessage(lastSeenMessages []LastSeenMessage, lastMessage LastMessage
 	return 1
 }
 
-func getIsRead(lastSeenMessages []LastSeenMessage, lastMessage LastMessage, username string) int {
+func getIsSeen(lastSeenMessages []LastSeenMessage, lastMessage LastMessage, username string) int {
 	if lastMessage.Sender != username {
 		return 0
 	}
 
 	for _, lastSeenMessage := range lastSeenMessages {
-		if lastSeenMessage.MessageId == int(lastMessage.Id) && lastSeenMessage.Username != username {
+		if lastSeenMessage.ConversationId == lastMessage.ConversationId &&
+			lastSeenMessage.MessageId == int(lastMessage.Id) {
 			return 1
 		}
 	}
