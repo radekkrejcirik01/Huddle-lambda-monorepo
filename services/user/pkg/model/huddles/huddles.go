@@ -10,8 +10,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const huddleType = "huddle"
-
 // Huddle is a communication app for suggesting hangouts by adding simple posts called Huddles
 type Huddle struct {
 	Id        uint `gorm:"primary_key;auto_increment;not_null"`
@@ -95,11 +93,7 @@ func CreateHuddle(db *gorm.DB, username string, t *NewHuddle) error {
 	}
 
 	hangoutNotification := service.FcmNotification{
-		Data: map[string]interface{}{
-			"type":     huddleType,
-			"huddleId": huddle.Id,
-		},
-		Title:   t.Name + " posted huddle",
+		Title:   t.Name + " posted",
 		Body:    t.Message,
 		Devices: tokens,
 	}
@@ -107,7 +101,7 @@ func CreateHuddle(db *gorm.DB, username string, t *NewHuddle) error {
 	return service.SendNotification(&hangoutNotification)
 }
 
-// Get user huddles from huddles table
+// GetUserHuddles from huddles table
 func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, error) {
 	var huddlesData []HuddleData
 	var huddles []Huddle

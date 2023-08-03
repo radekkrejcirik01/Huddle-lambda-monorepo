@@ -96,11 +96,7 @@ func AddHuddleComment(db *gorm.DB, t *HuddleComment) error {
 	}
 
 	fcmNotification := service.FcmNotification{
-		Data: map[string]interface{}{
-			"type":     huddleType,
-			"huddleId": t.HuddleId,
-		},
-		Title:   name + " commented",
+		Title:   name + " commented your huddle",
 		Body:    t.Message,
 		Sound:   "default",
 		Devices: tokens,
@@ -157,10 +153,7 @@ func AddHuddleMentionComment(db *gorm.DB, username string, t *MentionComment) er
 	}
 
 	fcmNotification := service.FcmNotification{
-		Data: map[string]interface{}{
-			"type": huddleType,
-		},
-		Title:   name + " mentioned you",
+		Title:   name + " mentioned you in comment",
 		Body:    t.Message,
 		Sound:   "default",
 		Devices: tokens,
@@ -169,7 +162,7 @@ func AddHuddleMentionComment(db *gorm.DB, username string, t *MentionComment) er
 	return service.SendNotification(&fcmNotification)
 }
 
-// Get Huddle comments from huddles_comments table
+// GetHuddleComments from huddles_comments table
 func GetHuddleComments(
 	db *gorm.DB,
 	huddleId string,

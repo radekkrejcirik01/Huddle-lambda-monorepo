@@ -86,7 +86,7 @@ func MessageReact(db *gorm.DB, username string, t *SendReaction) error {
 
 	fcmNotification := service.FcmNotification{
 		Data: map[string]interface{}{
-			"type":           "message",
+			"type":           "conversation",
 			"conversationId": t.ConversationId,
 			"name":           senderInfo.Firstname,
 			"profilePhoto":   senderInfo.ProfilePhoto,

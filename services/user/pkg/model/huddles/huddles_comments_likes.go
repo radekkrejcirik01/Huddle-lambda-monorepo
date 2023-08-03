@@ -64,10 +64,6 @@ func LikeHuddleComment(db *gorm.DB, username string, t *CommentLike) error {
 	}
 
 	fcmNotification := service.FcmNotification{
-		Data: map[string]interface{}{
-			"type":     huddleType,
-			"huddleId": t.HuddleId,
-		},
 		Body:    name + " liked your comment",
 		Sound:   "default",
 		Devices: tokens,
