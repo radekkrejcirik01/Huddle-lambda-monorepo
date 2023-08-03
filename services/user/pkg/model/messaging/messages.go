@@ -64,6 +64,7 @@ type Huddle struct {
 	Message        string  `json:"message"`
 	Liked          int     `json:"liked"`
 	CommentsNumber int     `json:"commentsNumber"`
+	LikesNumber    int     `json:"likesNumber"`
 }
 
 type MessageData struct {
@@ -181,7 +182,8 @@ func GetConversation(db *gorm.DB, conversationId string, username string, lastId
 	var peopleInConversations []string
 	var huddles []H.Huddle
 	var huddleIds []int
-	var likedHuddlesIds []int
+	var huddleComments []H.HuddleComment
+	var huddleLikes []H.HuddleInteracted
 	var messagesReactions []Reaction
 	var messagesData []MessageData
 	var lastSeenMessages []LastSeenMessage
@@ -238,9 +240,15 @@ func GetConversation(db *gorm.DB, conversationId string, username string, lastId
 
 	if err := db.
 		Table("huddles_interacted").
-		Select("huddle_id").
-		Where("sender = ? AND huddle_id IN ?", username, huddleIds).
-		Find(&likedHuddlesIds).Error; err != nil {
+		Where("huddle_id IN ?", huddleIds).
+		Find(&huddleLikes).Error; err != nil {
+		return nil, err
+	}
+
+	if err := db.
+		Table("huddles_comments").
+		Where("huddle_id IN ?", huddleIds).
+		Find(&huddleComments).Error; err != nil {
 		return nil, err
 	}
 
@@ -279,15 +287,19 @@ func GetConversation(db *gorm.DB, conversationId string, username string, lastId
 
 	for _, huddle := range huddles {
 		name, profilePhoto := getUserDetails(huddle.CreatedBy, userDetails)
-		liked := H.GetInteraction(likedHuddlesIds, int(huddle.Id))
+		commentsNumber := getCommentsNumber(huddleComments, int(huddle.Id))
+		likesNumber := getLikesNumber(huddleLikes, int(huddle.Id))
+		liked := isHuddleLiked(huddleLikes, username, int(huddle.Id))
 
 		h := &Huddle{
-			Id:           int(huddle.Id),
-			Sender:       huddle.CreatedBy,
-			Name:         name,
-			ProfilePhoto: profilePhoto,
-			Message:      huddle.Message,
-			Liked:        liked,
+			Id:             int(huddle.Id),
+			Sender:         huddle.CreatedBy,
+			Name:           name,
+			ProfilePhoto:   profilePhoto,
+			Message:        huddle.Message,
+			CommentsNumber: commentsNumber,
+			LikesNumber:    likesNumber,
+			Liked:          liked,
 		}
 
 		messagesData = append(messagesData, MessageData{
@@ -304,6 +316,38 @@ func GetConversation(db *gorm.DB, conversationId string, username string, lastId
 	})
 
 	return messagesData, nil
+}
+
+func getCommentsNumber(huddlesComments []H.HuddleComment, huddleId int) int {
+	var count int
+	for _, huddlesComment := range huddlesComments {
+		if huddlesComment.HuddleId == huddleId {
+			count += 1
+		}
+	}
+
+	return count
+}
+
+func getLikesNumber(likedHuddles []H.HuddleInteracted, huddleId int) int {
+	var count int
+	for _, likedHuddle := range likedHuddles {
+		if likedHuddle.HuddleId == huddleId {
+			count += 1
+		}
+	}
+
+	return count
+}
+
+func isHuddleLiked(likedHuddles []H.HuddleInteracted, username string, huddleId int) int {
+	for _, likedHuddle := range likedHuddles {
+		if likedHuddle.HuddleId == huddleId && likedHuddle.Sender == username {
+			return 1
+		}
+	}
+
+	return 0
 }
 
 // GetMessagesByUsernames and reactions from messages table
