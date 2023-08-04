@@ -30,12 +30,6 @@ type UserNotificationsResponse struct {
 	Data    users.Notification `json:"data,omitempty"`
 }
 
-type PeopleNumberResponse struct {
-	Status       string `json:"status"`
-	Message      string `json:"message,omitempty"`
-	PeopleNumber int64  `json:"peopleNumber,omitempty"`
-}
-
 type PeopleResponse struct {
 	Status  string              `json:"status"`
 	Message string              `json:"message,omitempty"`
@@ -102,12 +96,6 @@ type GetChatsResponse struct {
 	Status  string           `json:"status"`
 	Message string           `json:"message,omitempty"`
 	Data    []messaging.Chat `json:"data,omitempty"`
-}
-
-type GetUnreadMessagesNumberResponse struct {
-	Status  string `json:"status"`
-	Message string `json:"message,omitempty"`
-	Unread  int64  `json:"unread,omitempty"`
 }
 
 type GetMessagesResponse struct {
