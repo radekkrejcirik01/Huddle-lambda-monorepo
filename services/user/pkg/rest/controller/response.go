@@ -42,18 +42,6 @@ type GetUnseenInvitesResponse struct {
 	Number  int64  `json:"number,omitempty"`
 }
 
-type GetHiddenPeopleResponse struct {
-	Status  string                    `json:"status"`
-	Message string                    `json:"message,omitempty"`
-	Data    []people.HiddenPeopleData `json:"data,omitempty"`
-}
-
-type GetMutedHuddlesResponse struct {
-	Status  string          `json:"status"`
-	Message string          `json:"message,omitempty"`
-	Data    []people.Person `json:"data,omitempty"`
-}
-
 type GetIsConversationMutedResponse struct {
 	Status  string   `json:"status"`
 	Message string   `json:"message,omitempty"`

@@ -65,17 +65,7 @@ func CreateHuddle(db *gorm.DB, username string, t *NewHuddle) error {
 		return err
 	}
 
-	var hiddenUsernames []string
-	if err := db.
-		Table("hides").
-		Select("hidden").
-		Where("user = ?", username).
-		Find(&hiddenUsernames).
-		Error; err != nil {
-		return err
-	}
-
-	usernames := GetNewHuddleUsernamesFromInvites(acceptedInvites, hiddenUsernames, username)
+	usernames := GetNewHuddleUsernamesFromInvites(acceptedInvites, username)
 
 	var notifyUsernames []string
 	if err := db.
@@ -210,7 +200,6 @@ func DeleteHuddle(db *gorm.DB, id string) error {
 // GetNewHuddleUsernamesFromInvites from invites array
 func GetNewHuddleUsernamesFromInvites(
 	invites []Invite,
-	hiddenUsernames []string,
 	username string,
 ) []string {
 	var usernames []string
@@ -223,9 +212,7 @@ func GetNewHuddleUsernamesFromInvites(
 			user = invite.Sender
 		}
 
-		if !p.IsPersonHidden(hiddenUsernames, user) {
-			usernames = append(usernames, user)
-		}
+		usernames = append(usernames, user)
 	}
 	return usernames
 }

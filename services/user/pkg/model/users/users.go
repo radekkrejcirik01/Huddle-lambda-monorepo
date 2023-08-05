@@ -269,22 +269,6 @@ func DeleteAccount(db *gorm.DB, username string) error {
 		return err
 	}
 
-	if err := db.
-		Table("muted_huddles").
-		Where("user = ?", username).
-		Delete(&people.MutedHuddle{}).
-		Error; err != nil {
-		return err
-	}
-
-	if err := db.
-		Table("hides").
-		Where("user = ?", username).
-		Delete(&people.Hide{}).
-		Error; err != nil {
-		return err
-	}
-
 	return db.
 		Table("users").
 		Where("username = ?", username).
