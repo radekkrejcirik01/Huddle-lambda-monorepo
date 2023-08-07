@@ -29,6 +29,7 @@ func Create() *fiber.App {
 	app.Post("/photo", controller.UploadPhoto)
 	app.Post("/person", controller.AddPersonInvite)
 	app.Post("/huddle", controller.CreateHuddle)
+	app.Post("/huddle-photo", controller.UploadHuddlePhoto)
 	app.Post("/huddle/like", controller.LikeHuddle)
 	app.Post("/comment", controller.AddHuddleComment)
 	app.Post("/comment-mention", controller.AddHuddleMentionComment)

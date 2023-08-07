@@ -1,8 +1,15 @@
 package huddles
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/database"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
@@ -24,6 +31,12 @@ func (Huddle) TableName() string {
 type NewHuddle struct {
 	Name    string
 	Message string
+	Photos  []string
+}
+
+type HuddlePhotoUpload struct {
+	Buffer   string
+	FileName string
 }
 
 type HuddleData struct {
@@ -42,11 +55,6 @@ type Invite struct {
 	Receiver string
 }
 
-type Update struct {
-	Id      int
-	Message string
-}
-
 // CreateHuddle in huddles table
 func CreateHuddle(db *gorm.DB, username string, t *NewHuddle) error {
 	huddle := Huddle{
@@ -54,6 +62,17 @@ func CreateHuddle(db *gorm.DB, username string, t *NewHuddle) error {
 		Message:   t.Message,
 	}
 	if err := db.Table("huddles").Create(&huddle).Error; err != nil {
+		return err
+	}
+
+	var huddlePhotos []HuddlePhoto
+	for _, photo := range t.Photos {
+		huddlePhotos = append(huddlePhotos, HuddlePhoto{
+			HuddleId: int(huddle.Id),
+			Url:      photo,
+		})
+	}
+	if err := db.Table("huddles_photos").Create(&huddlePhotos).Error; err != nil {
 		return err
 	}
 
@@ -89,6 +108,38 @@ func CreateHuddle(db *gorm.DB, username string, t *NewHuddle) error {
 	}
 
 	return service.SendNotification(&hangoutNotification)
+}
+
+// UploadHuddlePhoto to S3 bucket
+func UploadHuddlePhoto(username string, t *HuddlePhotoUpload) (string, error) {
+	accessKey, secretAccessKey := database.GetCredentials()
+
+	sess := session.Must(session.NewSession(
+		&aws.Config{
+			Region: aws.String("eu-central-1"),
+			Credentials: credentials.NewStaticCredentials(
+				accessKey,
+				secretAccessKey,
+				"", // a token will be created when the session it's used.
+			),
+		}))
+
+	// Create an uploader with the session and default options
+	uploader := s3manager.NewUploader(sess)
+
+	decode, _ := base64.StdEncoding.DecodeString(t.Buffer)
+	// Upload the file to S3.
+	result, err := uploader.Upload(&s3manager.UploadInput{
+		Bucket:      aws.String("notify-bucket-images"),
+		Key:         aws.String("huddle-images/" + username + "/" + t.FileName),
+		Body:        bytes.NewReader(decode),
+		ContentType: aws.String("image/jpeg"),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return result.Location, nil
 }
 
 // GetHuddle from huddles table

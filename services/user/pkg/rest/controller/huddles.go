@@ -36,6 +36,38 @@ func CreateHuddle(c *fiber.Ctx) error {
 	})
 }
 
+// UploadHuddlePhoto POST /huddle-photo
+func UploadHuddlePhoto(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
+	t := &huddles.HuddlePhotoUpload{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	url, err := huddles.UploadHuddlePhoto(username, t)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(UploadPhotoResponse{
+		Status:   "success",
+		Message:  "Huddle photo successfully uploaded",
+		ImageUrl: url,
+	})
+}
+
 // GetUserHuddles GET /user-huddles/:lastId?
 func GetUserHuddles(c *fiber.Ctx) error {
 	username, err := middleware.Authorize(c)
