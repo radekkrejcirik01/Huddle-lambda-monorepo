@@ -27,7 +27,6 @@ func init() {
 		&people.Blocked{},
 		&huddles.HuddleLike{},
 		&huddles.Huddle{},
-		&huddles.HuddlePhoto{},
 		&huddles.HuddleComment{},
 		&huddles.HuddleCommentLike{},
 		&huddles.LastSeenHuddle{},

@@ -21,6 +21,7 @@ type Huddle struct {
 	Id        uint `gorm:"primary_key;auto_increment;not_null"`
 	CreatedBy string
 	Message   string
+	Photo     string
 	Created   int64 `gorm:"autoCreateTime"`
 }
 
@@ -31,7 +32,7 @@ func (Huddle) TableName() string {
 type NewHuddle struct {
 	Name    string
 	Message string
-	Photos  []string
+	Photo   string
 }
 
 type HuddlePhotoUpload struct {
@@ -40,14 +41,15 @@ type HuddlePhotoUpload struct {
 }
 
 type HuddleData struct {
-	Id             int    `json:"id"`
-	CreatedBy      string `json:"createdBy"`
-	Name           string `json:"name"`
-	ProfilePhoto   string `json:"profilePhoto"`
-	Message        string `json:"message"`
-	Liked          int    `json:"liked,omitempty"`
-	CommentsNumber int    `json:"commentsNumber"`
-	LikesNumber    int    `json:"likesNumber"`
+	Id             int     `json:"id"`
+	CreatedBy      string  `json:"createdBy"`
+	Name           string  `json:"name"`
+	ProfilePhoto   string  `json:"profilePhoto"`
+	Message        string  `json:"message"`
+	Photo          *string `json:"photo,omitempty"`
+	Liked          int     `json:"liked,omitempty"`
+	CommentsNumber int     `json:"commentsNumber"`
+	LikesNumber    int     `json:"likesNumber"`
 }
 
 type Invite struct {
@@ -60,19 +62,9 @@ func CreateHuddle(db *gorm.DB, username string, t *NewHuddle) error {
 	huddle := Huddle{
 		CreatedBy: username,
 		Message:   t.Message,
+		Photo:     t.Photo,
 	}
 	if err := db.Table("huddles").Create(&huddle).Error; err != nil {
-		return err
-	}
-
-	var huddlePhotos []HuddlePhoto
-	for _, photo := range t.Photos {
-		huddlePhotos = append(huddlePhotos, HuddlePhoto{
-			HuddleId: int(huddle.Id),
-			Url:      photo,
-		})
-	}
-	if err := db.Table("huddles_photos").Create(&huddlePhotos).Error; err != nil {
 		return err
 	}
 
@@ -149,7 +141,11 @@ func GetHuddle(db *gorm.DB, huddleId string, username string) (HuddleData, error
 	var huddleComments []HuddleComment
 	var huddleLikes []HuddleLike
 
-	if err := db.Table("huddles").Where("id = ?", huddleId).First(&huddle).Error; err != nil {
+	if err := db.
+		Table("huddles").
+		Where("id = ?", huddleId).
+		First(&huddle).
+		Error; err != nil {
 		return HuddleData{}, err
 	}
 
@@ -179,9 +175,10 @@ func GetHuddle(db *gorm.DB, huddleId string, username string) (HuddleData, error
 	return HuddleData{
 		Id:             int(huddle.Id),
 		CreatedBy:      huddle.CreatedBy,
-		Message:        huddle.Message,
 		Name:           user.Firstname,
 		ProfilePhoto:   user.ProfilePhoto,
+		Message:        huddle.Message,
+		Photo:          &huddle.Photo,
 		CommentsNumber: len(huddleComments),
 		LikesNumber:    len(huddleLikes),
 		Liked:          isHuddleLiked(huddleLikes, username, int(huddle.Id)),

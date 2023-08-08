@@ -48,7 +48,7 @@ type Info struct {
 type UserDetails struct {
 	Username     string
 	Firstname    string
-	ProfilePhoto *string
+	ProfilePhoto string
 }
 
 type Reaction struct {
@@ -57,14 +57,15 @@ type Reaction struct {
 }
 
 type Huddle struct {
-	Id             int     `json:"id"`
-	Sender         string  `json:"sender"`
-	Name           string  `json:"name"`
-	ProfilePhoto   *string `json:"profilePhoto,omitempty"`
-	Message        string  `json:"message"`
-	Liked          int     `json:"liked"`
-	CommentsNumber int     `json:"commentsNumber"`
-	LikesNumber    int     `json:"likesNumber"`
+	Id             int    `json:"id"`
+	Sender         string `json:"sender"`
+	Name           string `json:"name"`
+	ProfilePhoto   string `json:"profilePhoto,omitempty"`
+	Message        string `json:"message"`
+	Photo          string `json:"photo,omitempty"`
+	Liked          int    `json:"liked"`
+	CommentsNumber int    `json:"commentsNumber"`
+	LikesNumber    int    `json:"likesNumber"`
 }
 
 type MessageData struct {
@@ -295,6 +296,7 @@ func GetConversation(db *gorm.DB, conversationId string, username string, lastId
 			Name:           name,
 			ProfilePhoto:   profilePhoto,
 			Message:        huddle.Message,
+			Photo:          huddle.Photo,
 			CommentsNumber: commentsNumber,
 			LikesNumber:    likesNumber,
 			Liked:          liked,
@@ -450,6 +452,7 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 			Name:           name,
 			ProfilePhoto:   profilePhoto,
 			Message:        huddle.Message,
+			Photo:          huddle.Photo,
 			CommentsNumber: commentsNumber,
 			LikesNumber:    likesNumber,
 			Liked:          liked,
@@ -548,9 +551,9 @@ func getReadBy(lastSeenMessages []LastSeenMessage, messageId uint, sender string
 	return users
 }
 
-func getUserDetails(username string, userDetails []UserDetails) (string, *string) {
+func getUserDetails(username string, userDetails []UserDetails) (string, string) {
 	var name string
-	var profilePhoto *string
+	var profilePhoto string
 
 	for _, detail := range userDetails {
 		if detail.Username == username {
