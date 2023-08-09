@@ -24,6 +24,8 @@ type Message struct {
 	Message        string
 	Time           int64 `gorm:"autoCreateTime"`
 	Url            string
+	ReplyMessage   string
+	ReplyPhoto     string
 }
 
 func (Message) TableName() string {
@@ -33,9 +35,10 @@ func (Message) TableName() string {
 type Send struct {
 	ConversationId uint
 	Message        string
-	Time           string
 	Buffer         *string
 	FileName       *string
+	ReplyMessage   string
+	ReplyPhoto     string
 }
 
 type Info struct {
@@ -69,14 +72,16 @@ type Huddle struct {
 }
 
 type MessageData struct {
-	Id        uint     `json:"id"`
-	Sender    string   `json:"sender"`
-	Message   string   `json:"message"`
-	Time      int64    `json:"time"`
-	Url       string   `json:"url,omitempty"`
-	Huddle    *Huddle  `json:"huddle,omitempty"`
-	Reactions []string `json:"reactions,omitempty"`
-	ReadBy    []string `json:"readBy,omitempty"`
+	Id           uint     `json:"id"`
+	Sender       string   `json:"sender"`
+	Message      string   `json:"message"`
+	Time         int64    `json:"time"`
+	Url          string   `json:"url,omitempty"`
+	ReplyMessage string   `json:"replyMessage,omitempty"`
+	ReplyPhoto   string   `json:"replyPhoto,omitempty"`
+	Huddle       *Huddle  `json:"huddle,omitempty"`
+	Reactions    []string `json:"reactions,omitempty"`
+	ReadBy       []string `json:"readBy,omitempty"`
 }
 
 // Add message to messages table
@@ -97,6 +102,8 @@ func SendMessage(db *gorm.DB, username string, t *Send) error {
 		ConversationId: t.ConversationId,
 		Message:        t.Message,
 		Url:            photoUrl,
+		ReplyMessage:   t.ReplyMessage,
+		ReplyPhoto:     t.ReplyPhoto,
 	}
 
 	if err := db.Table("messages").Create(&message).Error; err != nil {
@@ -274,13 +281,15 @@ func GetConversation(db *gorm.DB, conversationId string, username string, lastId
 		readBy := getReadBy(lastSeenMessages, message.Id, message.Sender)
 
 		messagesData = append(messagesData, MessageData{
-			Id:        message.Id,
-			Sender:    message.Sender,
-			Message:   message.Message,
-			Time:      message.Time,
-			Url:       message.Url,
-			Reactions: reactions,
-			ReadBy:    readBy,
+			Id:           message.Id,
+			Sender:       message.Sender,
+			Message:      message.Message,
+			Time:         message.Time,
+			Url:          message.Url,
+			ReplyMessage: message.ReplyMessage,
+			ReplyPhoto:   message.ReplyPhoto,
+			Reactions:    reactions,
+			ReadBy:       readBy,
 		})
 	}
 
@@ -430,13 +439,15 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 		readBy := getReadBy(lastSeenMessages, message.Id, message.Sender)
 
 		messagesData = append(messagesData, MessageData{
-			Id:        message.Id,
-			Sender:    message.Sender,
-			Message:   message.Message,
-			Time:      message.Time,
-			Url:       message.Url,
-			Reactions: reactions,
-			ReadBy:    readBy,
+			Id:           message.Id,
+			Sender:       message.Sender,
+			Message:      message.Message,
+			Time:         message.Time,
+			Url:          message.Url,
+			ReplyMessage: message.ReplyMessage,
+			ReplyPhoto:   message.ReplyPhoto,
+			Reactions:    reactions,
+			ReadBy:       readBy,
 		})
 	}
 

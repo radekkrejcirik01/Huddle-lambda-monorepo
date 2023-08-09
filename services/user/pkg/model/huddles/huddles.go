@@ -72,7 +72,8 @@ func CreateHuddle(db *gorm.DB, username string, t *NewHuddle) error {
 	if err := db.
 		Table("invites").
 		Where("(sender = ? OR receiver = ?) AND accepted = 1", username, username).
-		Find(&acceptedInvites).Error; err != nil {
+		Find(&acceptedInvites).
+		Error; err != nil {
 		return err
 	}
 
