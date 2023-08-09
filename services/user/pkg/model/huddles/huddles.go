@@ -42,7 +42,7 @@ type HuddlePhotoUpload struct {
 
 type HuddleData struct {
 	Id             int     `json:"id"`
-	CreatedBy      string  `json:"createdBy"`
+	Sender         string  `json:"sender"`
 	Name           string  `json:"name"`
 	ProfilePhoto   string  `json:"profilePhoto"`
 	Message        string  `json:"message"`
@@ -94,9 +94,14 @@ func CreateHuddle(db *gorm.DB, username string, t *NewHuddle) error {
 		return nil
 	}
 
+	body := t.Message
+	if len(t.Message) == 0 && len(t.Photo) != 0 {
+		body = "Photo"
+	}
+
 	hangoutNotification := service.FcmNotification{
 		Title:   t.Name + " posted",
-		Body:    t.Message,
+		Body:    body,
 		Devices: tokens,
 	}
 
@@ -175,7 +180,7 @@ func GetHuddle(db *gorm.DB, huddleId string, username string) (HuddleData, error
 
 	return HuddleData{
 		Id:             int(huddle.Id),
-		CreatedBy:      huddle.CreatedBy,
+		Sender:         huddle.CreatedBy,
 		Name:           user.Firstname,
 		ProfilePhoto:   user.ProfilePhoto,
 		Message:        huddle.Message,
@@ -221,7 +226,7 @@ func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, 
 
 		huddlesData = append(huddlesData, HuddleData{
 			Id:           int(huddle.Id),
-			CreatedBy:    huddle.CreatedBy,
+			Sender:       huddle.CreatedBy,
 			Name:         profileInfo.Firstname,
 			ProfilePhoto: profileInfo.ProfilePhoto,
 			Message:      huddle.Message,

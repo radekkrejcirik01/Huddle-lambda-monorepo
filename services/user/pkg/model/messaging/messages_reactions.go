@@ -27,10 +27,6 @@ type SendReaction struct {
 
 // MessageReact add reaction in messages_reactions tables
 func MessageReact(db *gorm.DB, username string, t *SendReaction) error {
-	if username == t.Receiver {
-		return nil
-	}
-
 	reaction := MessageReaction{
 		Sender:         username,
 		ConversationId: t.ConversationId,
@@ -40,11 +36,15 @@ func MessageReact(db *gorm.DB, username string, t *SendReaction) error {
 
 	if err := db.
 		Table("messages_reactions").
-		Where("sender = ? AND conversation_id = ? AND message_id = ?",
-			username, t.ConversationId, t.MessageId).
+		Where("sender = ? AND conversation_id = ? AND message_id = ? AND value = ?",
+			username, t.ConversationId, t.MessageId, t.Value).
 		FirstOrCreate(&reaction).
 		Error; err != nil {
 		return err
+	}
+
+	if username == t.Receiver {
+		return nil
 	}
 
 	var mutedConversation []string
