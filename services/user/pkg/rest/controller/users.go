@@ -120,7 +120,7 @@ func UpdateStatus(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(Response{
 		Status:  "success",
-		Message: "User successfully got",
+		Message: "Status successfully updated",
 	})
 }
 

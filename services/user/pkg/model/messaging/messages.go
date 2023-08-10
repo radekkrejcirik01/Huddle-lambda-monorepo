@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"sort"
+	"time"
 
 	H "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/huddles"
 
@@ -39,6 +40,11 @@ type Send struct {
 	FileName       *string
 	ReplyMessage   string
 	ReplyPhoto     string
+}
+
+type Typing struct {
+	ConversationId int
+	IsTyping       int
 }
 
 type Info struct {
@@ -171,6 +177,53 @@ func SendMessage(db *gorm.DB, username string, t *Send) error {
 		Body:    body,
 		Sound:   "default",
 		Devices: *tokens,
+	}
+
+	return service.SendNotification(&fcmNotification)
+}
+
+// UpdateTyping send typing update notification
+func UpdateTyping(db *gorm.DB, username string, t *Typing) error {
+	const status = "online"
+
+	var peopleInConversation []string
+	var onlineUsernames []string
+
+	if err := db.
+		Table("people_in_conversations").
+		Select("username").
+		Where("conversation_id = ? AND username != ?", t.ConversationId, username).
+		Find(&peopleInConversation).
+		Error; err != nil {
+		return err
+	}
+
+	// Unix time past one hour
+	timeStamp := time.Now().Add(-time.Hour * 1).Unix()
+
+	if err := db.
+		Table("users").
+		Select("username").
+		Where("username IN ? AND status = ? AND updated > ?",
+			peopleInConversation, status, timeStamp).
+		Find(&onlineUsernames).
+		Error; err != nil {
+		return err
+	}
+
+	tokens, err := service.GetTokensByUsernames(db, onlineUsernames)
+	if err != nil {
+		return nil
+	}
+
+	fcmNotification := service.FcmNotification{
+		Data: map[string]interface{}{
+			"type":           "typing",
+			"conversationId": t.ConversationId,
+			"username":       username,
+			"isTyping":       t.IsTyping,
+		},
+		Devices: tokens,
 	}
 
 	return service.SendNotification(&fcmNotification)

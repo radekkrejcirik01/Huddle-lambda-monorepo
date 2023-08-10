@@ -60,6 +60,35 @@ func SendMessage(c *fiber.Ctx) error {
 	})
 }
 
+// UpdateTyping POST /typing
+func UpdateTyping(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
+	t := &messaging.Typing{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if err := messaging.UpdateTyping(database.DB, username, t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Typing update successfully sent",
+	})
+}
+
 // GetConversation GET /conversation/:conversationId/:lastId?
 func GetConversation(c *fiber.Ctx) error {
 	username, err := middleware.Authorize(c)

@@ -35,6 +35,7 @@ func Create() *fiber.App {
 	app.Post("/comment-mention", controller.AddHuddleMentionComment)
 	app.Post("/comment-like", controller.LikeHuddleComment)
 	app.Post("/message", controller.SendMessage)
+	app.Post("/typing", controller.UpdateTyping)
 	app.Post("/conversation-like", controller.LikeConversation)
 	app.Post("/mute-conversation", controller.MuteConversation)
 	app.Post("/device", controller.SaveDevice)
