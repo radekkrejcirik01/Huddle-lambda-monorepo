@@ -218,6 +218,11 @@ func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, 
 
 	for _, huddle := range huddles {
 		profileInfo := GetProfileInfoFromProfiles(profiles, huddle.CreatedBy)
+		message := huddle.Message
+
+		if len(message) == 0 {
+			message = "Photo"
+		}
 
 		var liked int
 		if huddle.CreatedBy != username {
@@ -229,7 +234,7 @@ func GetUserHuddles(db *gorm.DB, username string, lastId string) ([]HuddleData, 
 			Sender:       huddle.CreatedBy,
 			Name:         profileInfo.Firstname,
 			ProfilePhoto: profileInfo.ProfilePhoto,
-			Message:      huddle.Message,
+			Message:      message,
 			Liked:        liked,
 		})
 
