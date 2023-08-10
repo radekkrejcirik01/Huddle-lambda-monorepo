@@ -42,6 +42,7 @@ func Create() *fiber.App {
 	app.Post("/block-user", controller.BlockUser)
 
 	app.Put("/person", controller.AcceptPersonInvite)
+	app.Put("/status", controller.UpdateStatus)
 	app.Put("/notification", controller.UpdateUserNotification)
 	app.Put("/seen-invites", controller.UpdateSeenInvites)
 	app.Put("/last-seen", controller.UpdateLastSeen)

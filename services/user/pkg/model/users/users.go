@@ -3,6 +3,7 @@ package users
 import (
 	"bytes"
 	"encoding/base64"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -28,7 +29,9 @@ type User struct {
 	CommentsNotifications       int    `gorm:"default:1"`
 	MentionsNotifications       int    `gorm:"default:1"`
 	MessagesNotifications       int    `gorm:"default:1"`
+	Status                      string
 	Password                    string
+	Updated                     int64
 }
 
 func (User) TableName() string {
@@ -63,6 +66,10 @@ type UpdateNotification struct {
 type UploadProfilePhotoBody struct {
 	Buffer   string
 	FileName string
+}
+
+type Status struct {
+	Status string
 }
 
 // CreateUser in users table
@@ -111,6 +118,16 @@ func GetUser(db *gorm.DB, username string) (UserData, error) {
 	}
 
 	return user, nil
+}
+
+// UpdateStatus in users table
+func UpdateStatus(db *gorm.DB, username string, t *Status) error {
+	updated := time.Now().Unix()
+	return db.
+		Table("users").
+		Where("username = ?", username).
+		Updates(map[string]interface{}{"status": t.Status, "updated": updated}).
+		Error
 }
 
 // GetUserNotifications from users table
