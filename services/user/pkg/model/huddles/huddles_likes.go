@@ -56,16 +56,16 @@ func LikeHuddle(db *gorm.DB, username string, t *Like) error {
 		return nil
 	}
 
-	tokens := &[]string{}
-	if err := service.GetTokensByUsername(db, tokens, t.Receiver); err != nil {
-		return nil
+	tokens, err := service.GetTokensByUsername(db, t.Receiver)
+	if err != nil {
+		return err
 	}
 
 	fcmNotification := service.FcmNotification{
-		Title:   username + " liked your huddle",
+		Title:   username + " liked your leaf",
 		Body:    t.Message,
 		Sound:   "default",
-		Devices: *tokens,
+		Devices: tokens,
 	}
 
 	return service.SendNotification(&fcmNotification)

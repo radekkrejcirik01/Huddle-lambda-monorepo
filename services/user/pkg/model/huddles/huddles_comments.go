@@ -45,10 +45,9 @@ type HuddleCommentData struct {
 	Time         int64    `json:"time"`
 }
 
-// Add Huddle comment to huddles_comments table
+// AddHuddleComment to huddles_comments table
 func AddHuddleComment(db *gorm.DB, t *HuddleComment) error {
 	var createdBy string
-	var name string
 
 	if err := db.Table("huddles_comments").Create(&t).Error; err != nil {
 		return err
@@ -81,22 +80,13 @@ func AddHuddleComment(db *gorm.DB, t *HuddleComment) error {
 		return nil
 	}
 
-	if err := db.
-		Table("users").
-		Select("firstname").
-		Where("username = ?", t.Sender).
-		Find(&name).
-		Error; err != nil {
+	tokens, err := service.GetTokensByUsername(db, createdBy)
+	if err != nil {
 		return err
 	}
 
-	tokens := []string{}
-	if err := service.GetTokensByUsername(db, &tokens, createdBy); err != nil {
-		return nil
-	}
-
 	fcmNotification := service.FcmNotification{
-		Title:   name + " commented your huddle",
+		Title:   t.Sender + " commented your leaf",
 		Body:    t.Message,
 		Sound:   "default",
 		Devices: tokens,
@@ -147,9 +137,9 @@ func AddHuddleMentionComment(db *gorm.DB, username string, t *MentionComment) er
 		return err
 	}
 
-	tokens := []string{}
-	if err := service.GetTokensByUsername(db, &tokens, t.Receiver); err != nil {
-		return nil
+	tokens, err := service.GetTokensByUsername(db, t.Receiver)
+	if err != nil {
+		return err
 	}
 
 	fcmNotification := service.FcmNotification{

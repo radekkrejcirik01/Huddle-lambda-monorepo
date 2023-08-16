@@ -75,9 +75,9 @@ func MessageReact(db *gorm.DB, username string, t *SendReaction) error {
 		return nil
 	}
 
-	tokens := &[]string{}
-	if err := service.GetTokensByUsername(db, tokens, t.Receiver); err != nil {
-		return nil
+	tokens, err := service.GetTokensByUsername(db, t.Receiver)
+	if err != nil {
+		return err
 	}
 
 	body := t.Message
@@ -94,7 +94,7 @@ func MessageReact(db *gorm.DB, username string, t *SendReaction) error {
 		Title:   senderInfo.Firstname + " reacted " + t.Value,
 		Body:    body,
 		Sound:   "default",
-		Devices: *tokens,
+		Devices: tokens,
 	}
 
 	return service.SendNotification(&fcmNotification)

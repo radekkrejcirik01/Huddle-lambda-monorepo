@@ -153,9 +153,9 @@ func SendMessage(db *gorm.DB, username string, t *Send) error {
 		return nil
 	}
 
-	tokens := &[]string{}
-	if err := service.GetTokensByUsername(db, tokens, receiver); err != nil {
-		return nil
+	tokens, err := service.GetTokensByUsername(db, receiver)
+	if err != nil {
+		return err
 	}
 
 	body := t.Message
@@ -176,7 +176,7 @@ func SendMessage(db *gorm.DB, username string, t *Send) error {
 		Title:   senderInfo.Username,
 		Body:    body,
 		Sound:   "default",
-		Devices: *tokens,
+		Devices: tokens,
 	}
 
 	return service.SendNotification(&fcmNotification)

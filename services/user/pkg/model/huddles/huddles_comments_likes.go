@@ -58,9 +58,9 @@ func LikeHuddleComment(db *gorm.DB, username string, t *CommentLike) error {
 		return err
 	}
 
-	tokens := []string{}
-	if err := service.GetTokensByUsername(db, &tokens, t.Receiver); err != nil {
-		return nil
+	tokens, err := service.GetTokensByUsername(db, t.Receiver)
+	if err != nil {
+		return err
 	}
 
 	fcmNotification := service.FcmNotification{

@@ -16,20 +16,27 @@ type FcmNotification struct {
 	Devices []string
 }
 
-func GetTokensByUsername(db *gorm.DB, t *[]string, username string) error {
-	return db.Table("devices").Select("device_token").Where("username = ?", username).Find(t).Error
+func GetTokensByUsername(db *gorm.DB, username string) ([]string, error) {
+	var tokens []string
+	err := db.
+		Table("devices").
+		Select("device_token").
+		Where("username = ?", username).
+		Find(&tokens).
+		Error
+
+	return tokens, err
 }
 
 func GetTokensByUsernames(db *gorm.DB, usernames []string) ([]string, error) {
 	var tokens []string
-	if err := db.
+	err := db.
 		Table("devices").
 		Select("device_token").
 		Where("username IN ?", usernames).
-		Find(&tokens).Error; err != nil {
-		return tokens, err
-	}
-	return tokens, nil
+		Find(&tokens).Error
+
+	return tokens, err
 }
 
 func SendNotification(t *FcmNotification) error {
