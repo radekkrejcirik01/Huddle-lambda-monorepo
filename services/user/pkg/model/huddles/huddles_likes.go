@@ -1,6 +1,8 @@
 package huddles
 
 import (
+	"fmt"
+	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
 )
@@ -23,8 +25,8 @@ type Like struct {
 }
 
 type UserLike struct {
-	Username     string `json:"username"`
-	Firstname    string `json:"name"`
+	Id           int    `json:"id"`
+	Name         string `json:"name"`
 	ProfilePhoto string `json:"profilePhoto"`
 }
 
@@ -72,28 +74,59 @@ func LikeHuddle(db *gorm.DB, username string, t *Like) error {
 }
 
 // GetHuddleLikes from huddles_likes table
-func GetHuddleLikes(db *gorm.DB, huddleId string) ([]UserLike, error) {
-	var usersLiked []UserLike
+func GetHuddleLikes(db *gorm.DB, huddleId string, lastId string) ([]UserLike, error) {
+	var usersLikes []UserLike
+	var huddleLikes []HuddleLike
+	var profiles []p.Person
 
-	var likes []string
+	var idCondition string
+	if lastId != "" {
+		idCondition = fmt.Sprintf("id > %s AND ", lastId)
+	}
+
 	if err := db.
 		Table("huddles_likes").
-		Select("sender").
-		Where("huddle_id = ?", huddleId).
-		Find(&likes).
+		Where(idCondition+"huddle_id = ?", huddleId).
+		Limit(10).
+		Find(&huddleLikes).
 		Error; err != nil {
-		return usersLiked, err
+		return usersLikes, err
 	}
+
+	usernames := getUsernamesFromHuddleLikes(huddleLikes)
 
 	if err := db.
 		Table("users").
-		Where("username IN ?", likes).
-		Find(&usersLiked).
+		Select("username, firstname, profile_photo").
+		Where("username IN ?", usernames).
+		Find(&profiles).
 		Error; err != nil {
-		return usersLiked, err
+		return usersLikes, err
 	}
 
-	return usersLiked, nil
+	for _, huddleLike := range huddleLikes {
+		for _, profile := range profiles {
+			if profile.Username == huddleLike.Sender {
+				usersLikes = append(usersLikes, UserLike{
+					Id:           int(huddleLike.Id),
+					Name:         profile.Firstname,
+					ProfilePhoto: profile.ProfilePhoto,
+				})
+				break
+			}
+		}
+	}
+
+	return usersLikes, nil
+}
+
+func getUsernamesFromHuddleLikes(huddleLikes []HuddleLike) []string {
+	var usernames []string
+	for _, huddleLike := range huddleLikes {
+		usernames = append(usernames, huddleLike.Sender)
+	}
+
+	return usernames
 }
 
 // RemoveHuddleLike from huddles_likes table

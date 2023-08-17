@@ -166,15 +166,16 @@ func LikeHuddle(c *fiber.Ctx) error {
 	})
 }
 
-// GetHuddleLikes GET /likes/:huddleId
+// GetHuddleLikes GET /huddle-likes/:huddleId/:lastId?
 func GetHuddleLikes(c *fiber.Ctx) error {
 	_, err := middleware.Authorize(c)
 	if err != nil {
 		return err
 	}
 	huddleId := c.Params("huddleId")
+	lastId := c.Params("lastId")
 
-	huddleLikes, getErr := huddles.GetHuddleLikes(database.DB, huddleId)
+	huddleLikes, getErr := huddles.GetHuddleLikes(database.DB, huddleId, lastId)
 
 	if getErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
