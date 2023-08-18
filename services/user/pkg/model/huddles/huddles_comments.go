@@ -157,9 +157,8 @@ func GetHuddleComments(
 	db *gorm.DB,
 	huddleId string,
 	username string,
-	lastId string) ([]HuddleCommentData, []Mention, error) {
+	lastId string) ([]HuddleCommentData, error) {
 	var comments []HuddleCommentData
-	var mentions []Mention
 	var huddleComments []HuddleComment
 	var people []p.Person
 	var likes []HuddleCommentLike
@@ -175,18 +174,7 @@ func GetHuddleComments(
 		Limit(15).
 		Find(&huddleComments).
 		Error; err != nil {
-		return comments, mentions, err
-	}
-
-	var mentionsUsernames []string
-	if err := db.
-		Table("huddles_comments").
-		Distinct().
-		Select("sender").
-		Where("huddle_id = ?", huddleId).
-		Find(&mentionsUsernames).
-		Error; err != nil {
-		return comments, mentions, err
+		return comments, err
 	}
 
 	commentsUsernames := getCommentsUsernames(huddleComments)
@@ -195,7 +183,7 @@ func GetHuddleComments(
 		Where("username IN ?", commentsUsernames).
 		Find(&people).
 		Error; err != nil {
-		return comments, mentions, err
+		return comments, err
 	}
 
 	if err := db.
@@ -203,7 +191,7 @@ func GetHuddleComments(
 		Where("huddle_id = ?", huddleId).
 		Find(&likes).
 		Error; err != nil {
-		return comments, mentions, err
+		return comments, err
 	}
 
 	for _, comment := range huddleComments {
@@ -230,9 +218,34 @@ func GetHuddleComments(
 		})
 	}
 
-	mentions = getMentions(mentionsUsernames, people)
+	return comments, nil
+}
 
-	return comments, mentions, nil
+// GetMentions from users and invites tables
+func GetMentions(db *gorm.DB, username string) ([]p.Person, error) {
+	var mentions []p.Person
+	var invites []p.Invite
+
+	if err := db.
+		Table("invites").
+		Where("(sender = ? OR receiver = ?) AND accepted = 1",
+			username, username).
+		Order("id DESC").
+		Find(&invites).Error; err != nil {
+		return nil, err
+	}
+
+	usernames := p.GetUsernamesFromInvites(invites, username)
+
+	if err := db.
+		Table("users").
+		Where("username IN ?", usernames).
+		Find(&mentions).
+		Error; err != nil {
+		return nil, err
+	}
+
+	return mentions, nil
 }
 
 // DeleteHuddleComment from huddles comments table
@@ -246,6 +259,11 @@ func getCommentsUsernames(huddleComments []HuddleComment) []string {
 	for _, comment := range huddleComments {
 		if !contains(usernames, comment.Sender) {
 			usernames = append(usernames, comment.Sender)
+		}
+		if comment.Mention != nil {
+			if !contains(usernames, *comment.Mention) {
+				usernames = append(usernames, *comment.Mention)
+			}
 		}
 	}
 
@@ -273,26 +291,6 @@ func getMention(mention string, people []p.Person) *Mention {
 	}
 
 	return nil
-}
-
-func getMentions(usernames []string, people []p.Person) []Mention {
-	var mentions []Mention
-
-	for _, username := range usernames {
-		for _, person := range people {
-			if username == person.Username {
-				mentions = append(mentions, Mention{
-					Username:     person.Username,
-					Name:         person.Firstname,
-					ProfilePhoto: person.ProfilePhoto,
-				})
-
-				break
-			}
-		}
-	}
-
-	return mentions
 }
 
 func getLikesNumberPerComment(likes []HuddleCommentLike, commentId int) []string {

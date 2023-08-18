@@ -281,7 +281,7 @@ func GetHuddleComments(c *fiber.Ctx) error {
 	huddleId := c.Params("huddleId")
 	lastId := c.Params("lastId")
 
-	comments, mentions, getErr := huddles.GetHuddleComments(database.DB, huddleId, username, lastId)
+	comments, getErr := huddles.GetHuddleComments(database.DB, huddleId, username, lastId)
 	if getErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
@@ -290,10 +290,31 @@ func GetHuddleComments(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(GetHuddleCommentsResponse{
-		Status:   "success",
-		Message:  "Huddle comments successfully got",
-		Data:     comments,
-		Mentions: mentions,
+		Status:  "success",
+		Message: "Huddle comments successfully got",
+		Data:    comments,
+	})
+}
+
+// GetMentions GET /mentions
+func GetMentions(c *fiber.Ctx) error {
+	username, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+
+	mentions, getErr := huddles.GetMentions(database.DB, username)
+	if getErr != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: getErr.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(GetMentionsResponse{
+		Status:  "success",
+		Message: "Mentions successfully got",
+		Data:    mentions,
 	})
 }
 

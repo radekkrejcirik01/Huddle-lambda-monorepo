@@ -145,8 +145,8 @@ func GetPeople(db *gorm.DB, username string, lastId string) ([]PeopleData, error
 	for _, username := range usernames {
 		var person PeopleData
 
-		person.Id = getInviteId(invites, username)
-		person.User = getPersonByUsername(profiles, username)
+		person.Id = GetInviteId(invites, username)
+		person.User = GetPersonByUsername(profiles, username)
 		person.Accepted = isInviteAccepted(invites, username)
 
 		people = append(people, person)
@@ -226,7 +226,7 @@ func GetUsernamesFromInvites(acceptedInvites []Invite, username string) []string
 }
 
 // Get person by username from profiles
-func getPersonByUsername(profiles []Person, username string) Person {
+func GetPersonByUsername(profiles []Person, username string) Person {
 	var person Person
 	for _, profile := range profiles {
 		if profile.Username == username {
@@ -237,7 +237,7 @@ func getPersonByUsername(profiles []Person, username string) Person {
 	return person
 }
 
-func getInviteId(invites []Invite, username string) int {
+func GetInviteId(invites []Invite, username string) int {
 	for _, invite := range invites {
 		if invite.Sender == username || invite.Receiver == username {
 			return int(invite.Id)
