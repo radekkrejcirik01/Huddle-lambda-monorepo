@@ -51,7 +51,7 @@ type LastMessage struct {
 }
 
 // CreateConversation in conversations table
-func CreateConversation(db *gorm.DB, t *Create) (uint, error) {
+func CreateConversation(db *gorm.DB, t *Create) (int, error) {
 	conversation := Conversation{}
 
 	if err := db.Table("conversations").Create(&conversation).Error; err != nil {
@@ -82,7 +82,7 @@ func CreateConversation(db *gorm.DB, t *Create) (uint, error) {
 		return 0, err
 	}
 
-	return conversation.Id, nil
+	return int(conversation.Id), nil
 }
 
 // Get chats from conversations table

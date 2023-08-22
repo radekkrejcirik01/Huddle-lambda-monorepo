@@ -119,18 +119,26 @@ func GetConversation(c *fiber.Ctx) error {
 	})
 }
 
-// GetMessagesByUsernames GET /messages/:user
-func GetMessagesByUsernames(c *fiber.Ctx) error {
+// CreateConversation POST /conversation
+func CreateConversation(c *fiber.Ctx) error {
 	username, err := middleware.Authorize(c)
 	if err != nil {
 		return err
 	}
-	user := c.Params("user")
+	t := &messaging.Create{}
+
+	if err := c.BodyParser(t); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	t.Sender = username
 
 	messages, conversationId, getErr := messaging.GetMessagesByUsernames(
 		database.DB,
-		username,
-		user,
+		t,
 	)
 
 	if getErr != nil {

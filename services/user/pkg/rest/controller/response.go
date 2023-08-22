@@ -101,7 +101,7 @@ type GetMessagesByUsernamesResponse struct {
 	Status         string                  `json:"status"`
 	Message        string                  `json:"message,omitempty"`
 	Data           []messaging.MessageData `json:"data,omitempty"`
-	ConversationId uint                    `json:"conversationId,omitempty"`
+	ConversationId *int                    `json:"conversationId,omitempty"`
 }
 
 type GetIsConversationLikedResponse struct {

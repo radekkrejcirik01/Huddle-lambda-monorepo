@@ -21,7 +21,6 @@ func Create() *fiber.App {
 	app.Get("/comment-likes/:commentId/:lastId?", controller.GetCommentLikes)
 	app.Get("/chats/:lastId?", controller.GetChats)
 	app.Get("/conversation/:conversationId/:lastId?", controller.GetConversation)
-	app.Get("/messages/:user", controller.GetMessagesByUsernames)
 	app.Get("/muted-conversation/:conversationId", controller.IsConversationMuted)
 	app.Get("/conversation-like/:conversationId", controller.GetConversationLike)
 
@@ -35,6 +34,7 @@ func Create() *fiber.App {
 	app.Post("/comment", controller.AddHuddleComment)
 	app.Post("/comment-mention", controller.AddHuddleMentionComment)
 	app.Post("/comment-like", controller.LikeHuddleComment)
+	app.Post("/new-conversation", controller.CreateConversation)
 	app.Post("/message", controller.SendMessage)
 	app.Post("/typing", controller.UpdateTyping)
 	app.Post("/conversation-like", controller.LikeConversation)

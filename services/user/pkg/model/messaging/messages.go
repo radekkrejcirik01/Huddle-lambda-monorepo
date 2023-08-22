@@ -381,7 +381,7 @@ func GetConversation(db *gorm.DB, conversationId string, username string, lastId
 }
 
 // GetMessagesByUsernames and reactions from messages table
-func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]MessageData, uint, error) {
+func GetMessagesByUsernames(db *gorm.DB, t *Create) ([]MessageData, *int, error) {
 	var conversationId int
 	var messages []Message
 	var huddles []H.Huddle
@@ -404,19 +404,16 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 			GROUP BY
 				conversation_id
 			HAVING
-				COUNT(conversation_id) = 2)`, []string{username, user}).
+				COUNT(conversation_id) = 2)`, []string{t.Sender, t.Receiver}).
 		Find(&conversationId).
 		Error; err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	if conversationId == 0 {
-		id, err := CreateConversation(db, &Create{
-			Sender:   username,
-			Receiver: user,
-		})
+		id, err := CreateConversation(db, t)
 
-		return nil, id, err
+		return nil, &id, err
 	}
 
 	if err := db.
@@ -426,21 +423,21 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 		Limit(20).
 		Find(&messages).
 		Error; err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	if len(messages) == 0 {
-		return nil, uint(conversationId), nil
+		return nil, &conversationId, nil
 	}
 
 	lastMessageTime := messages[len(messages)-1].Time
 
 	if err := db.
 		Table("huddles").
-		Where("created_by IN ? AND created >= ?", []string{username, user}, lastMessageTime).
+		Where("created_by IN ? AND created >= ?", []string{t.Sender, t.Receiver}, lastMessageTime).
 		Find(&huddles).
 		Error; err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	huddleIds = H.GetIdsFromHuddlesArray(huddles)
@@ -449,14 +446,14 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 		Table("huddles_likes").
 		Where("huddle_id IN ?", huddleIds).
 		Find(&huddleLikes).Error; err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	if err := db.
 		Table("huddles_comments").
 		Where("huddle_id IN ?", huddleIds).
 		Find(&huddleComments).Error; err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	messagesIds := getMessagesIds(messages)
@@ -466,7 +463,7 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 		Where("conversation_id = ? AND message_id IN ?", conversationId, messagesIds).
 		Find(&messagesReactions).
 		Error; err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	if err := db.
@@ -474,17 +471,17 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 		Where("conversation_id = ?", conversationId).
 		Find(&lastSeenMessages).
 		Error; err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	var userDetails []UserDetails
 	if err := db.
 		Table("users").
 		Select("username, firstname, profile_photo").
-		Where("username IN ?", []string{username, user}).
+		Where("username IN ?", []string{t.Sender, t.Receiver}).
 		Find(&userDetails).
 		Error; err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	for _, message := range messages {
@@ -508,7 +505,7 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 		name, profilePhoto := getUserDetails(huddle.CreatedBy, userDetails)
 		commentsNumber := getCommentsNumber(huddleComments, int(huddle.Id))
 		likesNumber := getLikesNumber(huddleLikes, int(huddle.Id))
-		liked := isHuddleLiked(huddleLikes, username, int(huddle.Id))
+		liked := isHuddleLiked(huddleLikes, t.Sender, int(huddle.Id))
 
 		h := &Huddle{
 			Id:             int(huddle.Id),
@@ -535,7 +532,7 @@ func GetMessagesByUsernames(db *gorm.DB, username string, user string) ([]Messag
 		return messagesData[i].Time > messagesData[y].Time
 	})
 
-	return messagesData, uint(conversationId), nil
+	return messagesData, &conversationId, nil
 }
 
 func UploadChatPhoto(username string, buffer string, fileName string) (string, error) {
