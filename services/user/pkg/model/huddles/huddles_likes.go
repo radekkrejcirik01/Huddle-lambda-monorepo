@@ -2,6 +2,7 @@ package huddles
 
 import (
 	"fmt"
+
 	p "github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/model/people"
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
 	"gorm.io/gorm"
@@ -64,7 +65,7 @@ func LikeHuddle(db *gorm.DB, username string, t *Like) error {
 	}
 
 	fcmNotification := service.FcmNotification{
-		Title:   username + " liked your leaf",
+		Title:   username + " liked your post",
 		Body:    t.Message,
 		Sound:   "default",
 		Devices: tokens,

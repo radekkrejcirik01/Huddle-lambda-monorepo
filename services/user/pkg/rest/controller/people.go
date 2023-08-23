@@ -93,6 +93,27 @@ func AcceptPersonInvite(c *fiber.Ctx) error {
 	})
 }
 
+// DeleteInvite DELETE /invite/:id
+func DeleteInvite(c *fiber.Ctx) error {
+	_, err := middleware.Authorize(c)
+	if err != nil {
+		return err
+	}
+	id := c.Params("id")
+
+	if err := people.DeleteInvite(database.DB, id); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:  "success",
+		Message: "Invite successfully deleted",
+	})
+}
+
 // GetUnseenInvites GET /unseen-invites
 func GetUnseenInvites(c *fiber.Ctx) error {
 	username, err := middleware.Authorize(c)

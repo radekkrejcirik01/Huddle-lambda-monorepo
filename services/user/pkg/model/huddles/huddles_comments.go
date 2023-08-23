@@ -86,7 +86,7 @@ func AddHuddleComment(db *gorm.DB, t *HuddleComment) error {
 	}
 
 	fcmNotification := service.FcmNotification{
-		Title:   t.Sender + " commented your leaf",
+		Title:   t.Sender + " commented your post",
 		Body:    t.Message,
 		Sound:   "default",
 		Devices: tokens,

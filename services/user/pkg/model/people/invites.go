@@ -113,7 +113,7 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 		Data: map[string]interface{}{
 			"type": "contacts",
 		},
-		Body:    t.Sender + " sends friend invite",
+		Body:    t.Sender + " sends a friend invite",
 		Sound:   "default",
 		Devices: tokens,
 	}
@@ -121,7 +121,7 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 	return "Invite sent ✅", service.SendNotification(&fcmNotification)
 }
 
-// Get people from invites table
+// GetPeople from invites table
 func GetPeople(db *gorm.DB, username string, lastId string) ([]PeopleData, error) {
 	var invites []Invite
 	var people []PeopleData
@@ -165,7 +165,7 @@ func GetPeople(db *gorm.DB, username string, lastId string) ([]PeopleData, error
 	return people, nil
 }
 
-// Update accepted column in invites table to 1
+// AcceptPersonInvite in invites table
 func AcceptPersonInvite(db *gorm.DB, t *Invite) error {
 	if err := db.
 		Table("invites").
@@ -197,6 +197,15 @@ func AcceptPersonInvite(db *gorm.DB, t *Invite) error {
 	}
 
 	return service.SendNotification(&fcmNotification)
+}
+
+// DeleteInvite in invites table
+func DeleteInvite(db *gorm.DB, id string) error {
+	return db.
+		Table("invites").
+		Where("id = ?", id).
+		Delete(&Invite{}).
+		Error
 }
 
 // GetUnseenInvites from invites table
