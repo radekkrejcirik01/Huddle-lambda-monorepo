@@ -25,11 +25,11 @@ func AddPersonInvite(c *fiber.Ctx) error {
 
 	t.Sender = username
 
-	message, err := people.AddPersonInvite(database.DB, t)
-	if err != nil {
+	message, addErr := people.AddPersonInvite(database.DB, t)
+	if addErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(Response{
 			Status:  "error",
-			Message: err.Error(),
+			Message: addErr.Error(),
 		})
 	}
 

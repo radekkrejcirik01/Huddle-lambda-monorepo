@@ -1,7 +1,6 @@
 package people
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/radekkrejcirik01/PingMe-backend/services/user/pkg/service"
@@ -36,15 +35,20 @@ type PeopleData struct {
 // AddPersonInvite in invites table
 func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 	if t.Sender == t.Receiver {
-		return "Cannot invite yourself 😀", nil
+		return "Why are you inviting yourself? 😀", nil
 	}
 
-	if err := db.Table("users").Where("username = ?", t.Receiver).First(&Person{}).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "User doesn't exist yet", nil
-		}
-
+	var user Person
+	if err := db.
+		Table("users").
+		Where("username = ?", t.Receiver).
+		Find(&user).
+		Error; err != nil {
 		return "", err
+	}
+
+	if len(user.Username) == 0 {
+		return "Username doesn't exist", nil
 	}
 
 	var blockedUsernames []string
@@ -61,23 +65,29 @@ func AddPersonInvite(db *gorm.DB, t *Invite) (string, error) {
 		return "Could not send invite to this user", nil
 	}
 
-	invite := Invite{
-		Sender:   t.Sender,
-		Receiver: t.Receiver,
-	}
-	if rows := db.
+	var invite Invite
+	if err := db.
 		Table("invites").
 		Where("(sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)",
 			t.Sender, t.Receiver, t.Receiver, t.Sender).
-		FirstOrCreate(&invite).
-		RowsAffected; rows == 0 {
-		var message string
-		if invite.Sender == t.Sender {
-			message = "Invite already sent"
-		} else {
-			message = t.Receiver + " already invited you"
-		}
-		return message, nil
+		Find(&invite).
+		Error; err != nil {
+		return "", err
+	}
+
+	if invite.Sender == t.Sender {
+		return "Invite already sent", nil
+	}
+	if invite.Sender == t.Receiver {
+		return "User already invited you", nil
+	}
+
+	newInvite := Invite{
+		Sender:   t.Sender,
+		Receiver: t.Receiver,
+	}
+	if err := db.Table("invites").Create(&newInvite).Error; err != nil {
+		return "", err
 	}
 
 	var friendInviteNotification int
